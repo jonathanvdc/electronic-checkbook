@@ -1,6 +1,7 @@
 """Introduces the notions of a check, a promissory note draft and a promissory note."""
 
 import pickle
+import io
 from Crypto.Hash import SHA256
 from Crypto.Signature import DSS
 
@@ -27,7 +28,31 @@ def verify_DSS(message, signature, public_key):
         return False
 
 
-class Check(object):
+class Serializable(object):
+    """A base class for objects that can be encoded and decoded again."""
+
+    def write_to(self, target):
+        """Writes this object to a file."""
+        # TODO: we should probably define and implement a *portable*
+        # format that is not tied to Python's pickle library.
+        pickle.dump(self, target)
+
+    def to_bytes(self):
+        """Produces a byte string that represents this object."""
+        buf = io.BytesIO()
+        self.write_to(buf)
+        buf.seek(0)
+        result = buf.read()
+        buf.close()
+        return buf
+
+    @staticmethod
+    def read_from(source):
+        """Reads an object from a file."""
+        return pickle.load(source)
+
+
+class Check(Serializable):
     """A check that is signed by the bank."""
 
     def __init__(self, bank_id, owner_public_key, value, identifier,
@@ -41,19 +66,8 @@ class Check(object):
         self.identifier = identifier
         self.signature = signature
 
-    def write_to(self, target):
-        """Writes this check to a file."""
-        # TODO: we should probably define and implement a *portable*
-        # format that is not tied to Python's pickle library.
-        pickle.dump(self, target)
 
-    @staticmethod
-    def read_from(source):
-        """Reads a check from a file."""
-        return pickle.load(source)
-
-
-class PromissoryNoteDraft(object):
+class PromissoryNoteDraft(Serializable):
     """A draft promissory note, that is the unsigned part of a promissory note."""
 
     def __init__(self, seller_public_key, identifier, value):
@@ -65,23 +79,20 @@ class PromissoryNoteDraft(object):
         self.value = value
         self.checks = []
 
-    def append_check(self, check):
-        """Adds a check to this promissory note draft."""
-        self.checks.append(check)
+    @property
+    def total_check_value(self):
+        """Gets the sum of the amounts with which the checks in this
+           promissory note draft are annotated."""
+        return sum(amount for _, amount in self.checks)
 
-    def write_to(self, target):
-        """Writes this draft promissory note to a file."""
-        # TODO: we should probably define and implement a *portable*
-        # format that is not tied to Python's pickle library.
-        pickle.dump(self, target)
-
-    @staticmethod
-    def read_from(source):
-        """Reads a draft promissory note from a file."""
-        return pickle.load(source)
+    def append_check(self, check, amount):
+        """Adds a check to this promissory note draft and annotates it with
+           the amount of currency that is assigned to it."""
+        assert check.value >= amount
+        self.checks.append((check, amount))
 
 
-class PromissoryNote(object):
+class PromissoryNote(Serializable):
     """A signed promissory note."""
 
     def __init__(self, draft_bytes, seller_signature=b'', buyer_signature=b''):
@@ -110,7 +121,7 @@ class PromissoryNote(object):
            that tells if the signature is authentic."""
         return verify_DSS(self.draft_bytes + self.seller_signature,
                           self.buyer_signature,
-                          self.draft.checks[0].owner_public_key)
+                          self.draft.checks[0][0].owner_public_key)
 
     def sign_seller(self, private_key):
         """Signs this promissory note using the seller's private key."""
@@ -120,12 +131,3 @@ class PromissoryNote(object):
         """Signs this promissory note using the buyer's private key."""
         self.buyer_signature = sign_DSS(
             self.draft_bytes + self.seller_signature, private_key)
-
-    def write_to(self, target):
-        """Writes this promissory note to a file."""
-        pickle.dump(self, target)
-
-    @staticmethod
-    def read_from(source):
-        """Reads a promissory note from a file."""
-        return pickle.load(source)
