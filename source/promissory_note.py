@@ -56,7 +56,7 @@ class Check(Serializable):
     """A check that is signed by the bank."""
 
     def __init__(self, bank_id, owner_public_key, value, identifier,
-                 signature):
+                 signature=b''):
         """Creates a check from a bank id, the public key of the account holder
            for which the check is issued, the max value of the check, an
            identifier for the check and a signature."""
@@ -65,6 +65,22 @@ class Check(Serializable):
         self.value = value
         self.identifier = identifier
         self.signature = signature
+
+    def __get_unsigned_version(self):
+        return Check(bank_id, owner_public_key, value, identifier, b'')
+
+    def __get_unsigned_bytes(self):
+        return self.__get_unsigned_version().to_bytes()
+
+    @property
+    def is_signature_authentic(self, bank_public_key):
+        """Verifies the bank's signature. Returns a Boolean
+           that tells if the signature is authentic."""
+        return verify_DSS(self.__get_unsigned_bytes(), self.signature, bank_public_key)
+
+    def sign(self, bank_private_key):
+        """Signs this check using the bank's private key."""
+        self.signature = sign_DSS(self.__get_unsigned_bytes(), bank_private_key)
 
 
 class PromissoryNoteDraft(Serializable):
