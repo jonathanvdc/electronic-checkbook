@@ -73,8 +73,26 @@ class Check(Serializable):
         self.identifier = identifier
         self.signature = signature
 
+    def __getstate__(self):
+        """Retrieves the state for serialization."""
+        # Apparently the public key used by the pycrypto module wasn't supported by pickle,
+        # but it was possible to force the issue but using the key's built-in serialization
+        return {'bank_id': self.bank_id,
+                'owner_public_key': self.owner_public_key.export_key(format='PEM'),
+                'value': self.value,
+                'identifier': self.identifier,
+                'signature': self.signature}
+
+    def __setstate__(self, state):
+        """Sets the state for deserialization."""
+        self.bank_id = state['bank_id']
+        self.seller_public_key = ECC.import_key(state['owner_public_key'])
+        self.value = state['value']
+        self.identifier = state['identifier']
+        self.signature = state['signature']
+
     def __get_unsigned_version(self):
-        return Check(bank_id, owner_public_key, value, identifier, b'')
+        return Check(self.bank_id, self.owner_public_key, self.value, self.identifier, b'')
 
     def __get_unsigned_bytes(self):
         return self.__get_unsigned_version().to_bytes()
@@ -103,7 +121,7 @@ class PromissoryNoteDraft(Serializable):
         self.checks = []
 
     def __getstate__(self):
-        """Defines the state for serialization."""
+        """Retrieves the state for serialization."""
         # Apparently the public key used by the pycrypto module wasn't supported by pickle,
         # but it was possible to force the issue but using the key's built-in serialization
         return {'seller_public_key': self.seller_public_key.export_key(format='PEM'),
