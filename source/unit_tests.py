@@ -1,9 +1,12 @@
 import unittest
 from Crypto.PublicKey import ECC
 
+from bank import Bank, Account
 from account_holder_device import AccountHolderDevice
 from promissory_note import Check, PromissoryNote, PromissoryNoteDraft
 from signing_protocol import create_promissory_note
+import random
+
 
 class TestAccountHolderDevice(unittest.TestCase):
     def test_create(self):
@@ -21,10 +24,14 @@ class TestAccountHolderDevice(unittest.TestCase):
         assert device.is_known_bank(bank_id)
         assert device.get_bank_public_key(bank_id) == bank_key
 
+
 class TestSigningProtocol(unittest.TestCase):
     def test_create_promissory_note(self):
-        # TODO: actually implement this test.
-        pass
+        """Tests that a Promissory Note can be created."""
+        buyer = AccountHolderDevice()
+        seller = AccountHolderDevice()
+
+        create_promissory_note(buyer, seller, 0)
 
 if __name__ == '__main__':
     unittest.main()

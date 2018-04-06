@@ -46,7 +46,7 @@ class Account(object):
 class Bank(object):
     """The data store used by banks."""
 
-    def __init__(self, identifier, private_key=None):
+    def __init__(self, identifier, private_key=None, global_cap=1000):
         """Creates an empty bank data store from a unique identifier
            and a private key. Generates a private key automatically if
            none is specified."""
@@ -57,12 +57,15 @@ class Bank(object):
         self.identifier = identifier
         self.private_key = private_key
         self.public_key = private_key.public_key()
+        self.global_cap = global_cap
         self.accounts = {}
 
     def add_device(self, account, device):
         """Associates a new device with an account."""
         self.accounts[device.public_key] = account
-        account.devies[device.public_key] = device
+        account.devices[device.public_key] = (device,
+                                              AccountDeviceData(device.public_key,
+                                                                min(account.balance, self.global_cap)))
 
     def get_account(self, public_key):
         """Gets the account that owns a particular public key."""
@@ -71,3 +74,9 @@ class Bank(object):
     def get_device(self, public_key):
         """Gets the device with a particular public key."""
         return self.get_account(public_key).get_device(public_key)
+
+    def generate_fresh_batch_of_checks(self):
+        raise NotImplementedError
+
+    def assign_check(self, check, public_key):
+        self.accounts[public_key].get_device(public_key).add_unspent_check(check)

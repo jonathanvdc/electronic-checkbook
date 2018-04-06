@@ -28,8 +28,24 @@ def transfer(buyer_device, seller_device, amount):
     # Create and sign a note.
     note = create_promissory_note(buyer_device, seller_device, amount)
 
-    # TODO: verify the signed note.
+    # Verify the signatures
+    if not note.is_seller_signature_authentic:
+        raise ValueError("The signature of the the seller is not authentic.")
+
+    if not note.is_buyer_signature_authentic:
+        raise ValueError("The signature of the the buyer is not authentic.")
+
+    # Verify amount on promissory note
+    if not note.has_correct_total_check_value:
+        raise ValueError("The total check value contained within the promissory note "
+                         "does not correspond to the value specified by that selfsame note.")
+
+    # Verify check amounts
+    if not note.has_correct_check_values:
+        raise ValueError("Some of the checks contained within the promissory note "
+                         "list values exceeding their respective maximum values.")
 
     # Send it to the bank.
     # TODO: actually implement this.
+
     raise NotImplementedError

@@ -74,7 +74,7 @@ class AccountHolderDevice(object):
         while remaining_value > 0:
             unused_check = self.unspent_checks.popleft()
             amount = min(remaining_value, unused_check.value)
-            draft.append_check(unused_check, check)
+            draft.append_check(unused_check, amount)
             remaining_value -= amount
 
         assert draft.total_check_value == draft.value

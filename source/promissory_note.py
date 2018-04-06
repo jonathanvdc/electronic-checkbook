@@ -4,6 +4,7 @@ import pickle
 import io
 from Crypto.Hash import SHA256
 from Crypto.Signature import DSS
+from Crypto.PublicKey import ECC
 
 
 def sign_DSS(message, private_key):
@@ -11,9 +12,14 @@ def sign_DSS(message, private_key):
     # TODO: is SHA256 okay here? Probably not, but pycryptodome doesn't
     # seem to implement SHA-3. So we should probably think about whether
     # SHA256 is good enough for our purposes or not.
+    #
+    # According to NIST (https://www.nist.gov/news-events/news/2015/08/nist-releases-sha-3-cryptographic-hash-standard)
+    # SHA-2 is still very much secure and viable; SHA-3 is mostly there as an emergency backup in case
+    # the much feared collision-finding attacks on SHA-2 do eventually occur; also, SHA-2 displays better performance
+    # in software than SHA-3, so (given the constaints on our application) we should probably keep using SHA-2.
     h = SHA256.new(message)
-    # TODO: should be use 'fips-186-3' or the deterministic mode here?s
-    signer = DSS.new(key, 'fips-186-3')
+    # TODO: should we use 'fips-186-3' or the deterministic mode here?
+    signer = DSS.new(private_key, 'fips-186-3')
     return signer.sign(h)
 
 
@@ -39,12 +45,13 @@ class Serializable(object):
 
     def to_bytes(self):
         """Produces a byte string that represents this object."""
-        buf = io.BytesIO()
-        self.write_to(buf)
-        buf.seek(0)
-        result = buf.read()
-        buf.close()
-        return buf
+        # TODO: apparently this causes issues, so I switched to pickle.dumps instead
+        # buf = io.BytesIO()
+        # self.write_to(buf)
+        # buf.seek(0)
+        # result = buf.read()
+        # buf.close()
+        return pickle.dumps(self)
 
     @staticmethod
     def read_from(source):
@@ -95,6 +102,22 @@ class PromissoryNoteDraft(Serializable):
         self.value = value
         self.checks = []
 
+    def __getstate__(self):
+        """Defines the state for serialization."""
+        # Apparently the public key used by the pycrypto module wasn't supported by pickle,
+        # but it was possible to force the issue but using the key's built-in serialization
+        return {'seller_public_key': self.seller_public_key.export_key(format='PEM'),
+                'identifier': self.identifier,
+                'value': self.value,
+                'checks': self.checks}
+
+    def __setstate__(self, state):
+        """Sets the state for deserialization."""
+        self.seller_public_key = ECC.import_key(state['seller_public_key'])
+        self.identifier = state['identifier']
+        self.value = state['value']
+        self.checks = state['checks']
+
     @property
     def total_check_value(self):
         """Gets the sum of the amounts with which the checks in this
@@ -138,6 +161,18 @@ class PromissoryNote(Serializable):
         return verify_DSS(self.draft_bytes + self.seller_signature,
                           self.buyer_signature,
                           self.draft.checks[0][0].owner_public_key)
+
+    @property
+    def has_correct_total_check_value(self):
+        """Verifies whether the total check value corresponds to the value
+        specified by the promissory note. Returns a Boolean reflecting the truth of this property."""
+        return self.draft.total_check_value == self.draft.value
+
+    @property
+    def has_correct_check_values(self):
+        """Verifies whether the individual checks contained by this promissory note are valid; that is,
+        whether their individually contained values do not exceed their maximum values."""
+        return all(map(lambda check, value: check.value >= value, self.draft.checks))
 
     def sign_seller(self, private_key):
         """Signs this promissory note using the seller's private key."""
