@@ -25,6 +25,20 @@ class TestAccountHolderDevice(unittest.TestCase):
         assert device.get_bank_public_key(bank_id) == bank_key
 
 
+class TestBank(unittest.TestCase):
+    def test_create(self):
+        """Tests that a bank can be created."""
+        Bank(42)
+
+    def test_add_device(self):
+        bank = Bank(42)
+        device = AccountHolderDevice()
+        account = Account("Bill")
+        bank.add_device(account, device)
+        assert bank.get_account(device.public_key) == account
+        assert bank.get_device(device.public_key)[0] == device
+
+
 class TestSigningProtocol(unittest.TestCase):
     def test_create_promissory_note(self):
         """Tests that a Promissory Note can be created."""

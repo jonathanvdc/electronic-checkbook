@@ -40,7 +40,7 @@ class Account(object):
 
     def get_device(self, public_key):
         """Gets the device with a particular public key."""
-        return self.devices[public_key]
+        return self.devices[public_key.export_key(format='PEM')]
 
 
 class Bank(object):
@@ -62,14 +62,14 @@ class Bank(object):
 
     def add_device(self, account, device):
         """Associates a new device with an account."""
-        self.accounts[device.public_key] = account
-        account.devices[device.public_key] = (device,
+        self.accounts[device.public_key.export_key(format='PEM')] = account
+        account.devices[device.public_key.export_key(format='PEM')] = (device,
                                               AccountDeviceData(device.public_key,
                                                                 min(account.balance, self.global_cap)))
 
     def get_account(self, public_key):
         """Gets the account that owns a particular public key."""
-        return self.accounts[public_key]
+        return self.accounts[public_key.export_key(format='PEM')]
 
     def get_device(self, public_key):
         """Gets the device with a particular public key."""
@@ -79,4 +79,4 @@ class Bank(object):
         raise NotImplementedError
 
     def assign_check(self, check, public_key):
-        self.accounts[public_key].get_device(public_key).add_unspent_check(check)
+        self.get_account(public_key).get_device(public_key).add_unspent_check(check)
