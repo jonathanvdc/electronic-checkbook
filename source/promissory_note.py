@@ -78,6 +78,14 @@ class Check(Serializable):
         self.identifier = identifier
         self.signature = signature
 
+    def __eq__(self, other):
+        """Tests if this check equals another check."""
+        return self.__getstate__() == other.__getstate__()
+
+    def __hash__(self):
+        """Computes a hash value for this check."""
+        return hash(frozenset(self.__getstate__().items()))
+
     def __getstate__(self):
         """Retrieves the state of this object for serialization."""
         # Apparently the public key used by the pycrypto module wasn't supported by pickle,

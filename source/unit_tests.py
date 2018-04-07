@@ -35,9 +35,9 @@ class TestBank(unittest.TestCase):
         bank = Bank(42)
         device = AccountHolderDevice()
         account = Account("Bill")
-        bank.add_device(account, device)
+        device_data = bank.add_device(account, device.public_key)
         assert bank.get_account(device.public_key) == account
-        assert bank.get_device(device.public_key) == device
+        assert bank.get_device(device.public_key) == device_data
 
 
 class TestSerializable(unittest.TestCase):
@@ -96,10 +96,11 @@ class TestSigningProtocol(unittest.TestCase):
 
         buyer_account.deposit(1000)
 
-        buyer_bank.add_device(buyer_account, buyer_device)
-        seller_bank.add_device(seller_account, seller_device)
+        buyer_bank.add_device(buyer_account, buyer_device.public_key)
+        seller_bank.add_device(seller_account, seller_device.public_key)
 
-        buyer_bank.issue_check(buyer_device.public_key)
+        check = buyer_bank.issue_check(buyer_device.public_key, 10)
+        buyer_device.add_unspent_check(check)
 
         assert len(buyer_device.unspent_checks) == 1
         assert seller_device.promissory_note_counter == 0
