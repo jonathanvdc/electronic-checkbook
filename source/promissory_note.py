@@ -58,6 +58,11 @@ class Serializable(object):
         """Reads an object from a file."""
         return pickle.load(source)
 
+    @staticmethod
+    def from_bytes(source):
+        """Reads an object from a byte string."""
+        return pickle.loads(source)
+
 
 class Check(Serializable):
     """A check that is signed by the bank."""
@@ -74,7 +79,7 @@ class Check(Serializable):
         self.signature = signature
 
     def __getstate__(self):
-        """Retrieves the state for serialization."""
+        """Retrieves the state of this object for serialization."""
         # Apparently the public key used by the pycrypto module wasn't supported by pickle,
         # but it was possible to force the issue but using the key's built-in serialization
         return {'bank_id': self.bank_id,
@@ -84,9 +89,9 @@ class Check(Serializable):
                 'signature': self.signature}
 
     def __setstate__(self, state):
-        """Sets the state for deserialization."""
+        """Sets the state of this object for deserialization."""
         self.bank_id = state['bank_id']
-        self.seller_public_key = ECC.import_key(state['owner_public_key'])
+        self.owner_public_key = ECC.import_key(state['owner_public_key'])
         self.value = state['value']
         self.identifier = state['identifier']
         self.signature = state['signature']
@@ -121,7 +126,7 @@ class PromissoryNoteDraft(Serializable):
         self.checks = []
 
     def __getstate__(self):
-        """Retrieves the state for serialization."""
+        """Retrieves the state of this object for serialization."""
         # Apparently the public key used by the pycrypto module wasn't supported by pickle,
         # but it was possible to force the issue but using the key's built-in serialization
         return {'seller_public_key': self.seller_public_key.export_key(format='PEM'),
@@ -130,7 +135,7 @@ class PromissoryNoteDraft(Serializable):
                 'checks': self.checks}
 
     def __setstate__(self, state):
-        """Sets the state for deserialization."""
+        """Sets the state of this object for deserialization."""
         self.seller_public_key = ECC.import_key(state['seller_public_key'])
         self.identifier = state['identifier']
         self.value = state['value']
@@ -163,7 +168,7 @@ class PromissoryNote(Serializable):
     def draft(self):
         """Gets the decoded draft promissory note at the heart of this
            fully-signed promissory note."""
-        return PromissoryNoteDraft.read_from(self.draft_bytes)
+        return PromissoryNoteDraft.from_bytes(self.draft_bytes)
 
     @property
     def is_seller_signature_authentic(self):
@@ -189,8 +194,8 @@ class PromissoryNote(Serializable):
     @property
     def has_correct_check_values(self):
         """Verifies whether the individual checks contained by this promissory note are valid; that is,
-        whether their individually contained values do not exceed their maximum values."""
-        return all(map(lambda check, value: check.value >= value, self.draft.checks))
+        whether their individually contained values do not exceed their respective maximum values."""
+        return all(map(lambda check: check[0].value >= check[1], self.draft.checks))
 
     def sign_seller(self, private_key):
         """Signs this promissory note using the seller's private key."""

@@ -4,7 +4,7 @@ from Crypto.PublicKey import ECC
 from bank import Bank, Account, AccountDeviceData
 from account_holder_device import AccountHolderDevice
 from promissory_note import Serializable, Check, PromissoryNote, PromissoryNoteDraft
-from signing_protocol import create_promissory_note
+from signing_protocol import create_promissory_note, transfer, register_bank
 import random
 
 
@@ -37,41 +37,80 @@ class TestBank(unittest.TestCase):
         account = Account("Bill")
         bank.add_device(account, device)
         assert bank.get_account(device.public_key) == account
-        assert bank.get_device(device.public_key)[0] == device
+        assert bank.get_device(device.public_key) == device
 
 
 class TestSerializable(unittest.TestCase):
     def test_serialize_check(self):
-        """Test whether a check can be serialized."""
+        """Tests that a check can be serialized."""
         bank = Bank(42)
         device = AccountHolderDevice()
-        data = AccountDeviceData(device.public_key)
+        data = AccountDeviceData(device.public_key, 1000)
         random.seed(None)
-        data.generate_check(random.randint(1, 10), bank)
+        check = data.generate_check(random.randint(1, 10), bank)
+        serialized = check.to_bytes()
+        Check.from_bytes(serialized)
 
     def test_serialize_promissory_note_draft(self):
-        """Test whether a promissory note draft can be serialized."""
+        """Tests that a promissory note draft can be serialized."""
         device = AccountHolderDevice()
         random.seed(None)
         draft = device.draft_promissory_note(random.randint(1, 10))
-        draft.to_bytes()
+        serialized = draft.to_bytes()
+        PromissoryNoteDraft.from_bytes(serialized)
 
     def test_serialize_promisory_note(self):
-        """Test whether a promisory note can be serialized."""
+        """Tests that a promisory note can be serialized."""
         device = AccountHolderDevice()
         random.seed(None)
         draft = device.draft_promissory_note(random.randint(1, 10))
         note = PromissoryNote(draft.to_bytes())
-        note.to_bytes()
+        serialized = note.to_bytes()
+        PromissoryNote.from_bytes(serialized)
 
 
 class TestSigningProtocol(unittest.TestCase):
     def test_create_promissory_note(self):
         """Tests that a Promissory Note can be created."""
-        buyer = AccountHolderDevice()
-        seller = AccountHolderDevice()
+        buyer_device = AccountHolderDevice()
+        seller_device = AccountHolderDevice()
 
-        create_promissory_note(buyer, seller, 0)
+        create_promissory_note(buyer_device, seller_device, 0)
+
+    def test_transfer(self):
+        """Tests that a transfer can be made between a buyer and a seller."""
+        buyer_bank = Bank(42)
+        seller_bank = Bank(43)
+
+        register_bank(buyer_bank)
+        register_bank(seller_bank)
+
+        buyer_device = AccountHolderDevice()
+        seller_device = AccountHolderDevice()
+
+        buyer_device.register_bank(buyer_bank.identifier, buyer_bank.public_key)
+        seller_device.register_bank(seller_bank.identifier, seller_bank.public_key)
+
+        buyer_account = Account("buyer")
+        seller_account = Account("seller")
+
+        buyer_account.deposit(1000)
+
+        buyer_bank.add_device(buyer_account, buyer_device)
+        seller_bank.add_device(seller_account, seller_device)
+
+        buyer_bank.issue_check(buyer_device.public_key)
+
+        assert len(buyer_device.unspent_checks) == 1
+        assert seller_device.promissory_note_counter == 0
+
+        transfer(buyer_device, seller_device, 10)
+
+        assert len(buyer_device.unspent_checks) == 0
+        assert seller_device.promissory_note_counter == 1
+
+        assert buyer_account.balance == 990
+        assert seller_account.balance == 10
 
 if __name__ == '__main__':
     unittest.main()

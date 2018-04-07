@@ -3,6 +3,16 @@
 from account_holder_device import AccountHolderDevice
 from promissory_note import Check, PromissoryNote, PromissoryNoteDraft
 
+bank_repository = []
+
+
+def register_bank(bank):
+    bank_repository.append(bank)
+
+
+def known_banks():
+    return bank_repository
+
 
 def create_promissory_note(buyer_device, seller_device, amount):
     """Creates a fully signed promissory note for the transferral of
@@ -45,7 +55,6 @@ def transfer(buyer_device, seller_device, amount):
         raise ValueError("Some of the checks contained within the promissory note "
                          "list values exceeding their respective maximum values.")
 
-    # Send it to the bank.
-    # TODO: actually implement this.
-
-    raise NotImplementedError
+    # Send it to the bank; well, all the banks...
+    for bank in filter(lambda b: b.public_key in buyer_device.bank_keys.values(), known_banks()):
+        bank.redeem_promissory_note(note)
