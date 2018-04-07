@@ -6,6 +6,8 @@ from Crypto.PublicKey import ECC
 from promissory_note import Check, PromissoryNote, PromissoryNoteDraft
 from signing_protocol import known_banks
 
+class FraudException(Exception):
+    pass
 
 class AccountDeviceData(object):
     """The bank's view of a device belonging to a particular account."""
@@ -166,7 +168,7 @@ class Bank(object):
             if buyer_device_data.is_unspent(check):
                 buyer_device_data.spend_check(check)
             else:
-                raise ValueError(
+                raise FraudException(
                     'Oh lawd %s is double-spending!' % buyer_account.owner)
 
             buyer_account.withdraw(amount)

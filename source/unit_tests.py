@@ -1,7 +1,7 @@
 import unittest
 from Crypto.PublicKey import ECC
 
-from bank import Bank, Account, AccountDeviceData
+from bank import Bank, Account, AccountDeviceData, FraudException
 from account_holder_device import AccountHolderDevice
 from promissory_note import Serializable, Check, PromissoryNote, PromissoryNoteDraft
 from signing_protocol import create_promissory_note, transfer, register_bank
@@ -112,6 +112,36 @@ class TestSigningProtocol(unittest.TestCase):
 
         assert buyer_account.balance == 990
         assert seller_account.balance == 10
+
+    def test_catch_double_spender(self):
+        """Tests that people who try to double-spend checks are caught."""
+        bank = Bank(42)
+        register_bank(bank)
+
+        buyer_device = AccountHolderDevice()
+        seller_device = AccountHolderDevice()
+
+        buyer_device.register_bank(bank.identifier, bank.public_key)
+        seller_device.register_bank(bank.identifier, bank.public_key)
+
+        buyer_account = Account("Eric Laermans")
+        seller_account = Account("Carrefour Berchem")
+
+        buyer_account.deposit(1000)
+
+        bank.add_device(buyer_account, buyer_device.public_key)
+        bank.add_device(seller_account, seller_device.public_key)
+
+        # Issue a check and spend it.
+        check = bank.issue_check(buyer_device.public_key, 10)
+        buyer_device.add_unspent_check(check)
+        transfer(buyer_device, seller_device, 10)
+
+        # Now make the buyer device recycle that exact same check
+        # (i.e., double-spend it).
+        buyer_device.add_unspent_check(check)
+        with self.assertRaises(FraudException):
+            transfer(buyer_device, seller_device, 10)
 
 if __name__ == '__main__':
     unittest.main()
