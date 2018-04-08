@@ -159,7 +159,7 @@ class TestSigningProtocol(unittest.TestCase):
 
         buyer_account.deposit(1000)
 
-        buyer_device_data = bank.add_device(buyer_account, buyer_device.public_key, 20)
+        bank.add_device(buyer_account, buyer_device.public_key, 20)
         bank.add_device(seller_account, seller_device.public_key)
 
         # Issue two check and spend one.
