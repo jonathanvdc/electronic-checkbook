@@ -109,7 +109,7 @@ class Account(object):
 class Bank(object):
     """The data store used by banks."""
 
-    def __init__(self, identifier, private_key=None, default_cap=1000):
+    def __init__(self, identifier, private_key=None, default_cap=0):
         """Creates an empty bank data store from a unique identifier
            and a private key. Generates a private key automatically if
            none is specified."""
@@ -123,12 +123,14 @@ class Bank(object):
         self.default_cap = default_cap
         self.accounts = {}
 
-    def add_device(self, account, device_public_key):
+    def add_device(self, account, device_public_key, cap=None):
         """Associates a new device with an account. The device to add is
            identified by a public key. Returns the data for the device."""
+        if cap is None:
+            cap = self.default_cap
         exported_key = device_public_key.export_key(format='PEM')
         self.accounts[exported_key] = account
-        device_data = AccountDeviceData(device_public_key, self.default_cap)
+        device_data = AccountDeviceData(device_public_key, cap)
         account.devices[exported_key] = device_data
         return device_data
 

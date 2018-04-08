@@ -96,7 +96,7 @@ class TestSigningProtocol(unittest.TestCase):
 
         buyer_account.deposit(1000)
 
-        buyer_bank.add_device(buyer_account, buyer_device.public_key)
+        buyer_bank.add_device(buyer_account, buyer_device.public_key, 1000)
         seller_bank.add_device(seller_account, seller_device.public_key)
 
         check = buyer_bank.issue_check(buyer_device.public_key, 10)
@@ -129,7 +129,7 @@ class TestSigningProtocol(unittest.TestCase):
 
         buyer_account.deposit(1000)
 
-        bank.add_device(buyer_account, buyer_device.public_key)
+        bank.add_device(buyer_account, buyer_device.public_key, 1000)
         bank.add_device(seller_account, seller_device.public_key)
 
         # Issue a check and spend it.
@@ -159,8 +159,7 @@ class TestSigningProtocol(unittest.TestCase):
 
         buyer_account.deposit(1000)
 
-        buyer_device_data = bank.add_device(buyer_account, buyer_device.public_key)
-        buyer_device_data.cap = 20
+        buyer_device_data = bank.add_device(buyer_account, buyer_device.public_key, 20)
         bank.add_device(seller_account, seller_device.public_key)
 
         # Issue two check and spend one.
