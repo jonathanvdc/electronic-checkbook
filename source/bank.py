@@ -6,8 +6,10 @@ from Crypto.PublicKey import ECC
 from promissory_note import Check, PromissoryNote, PromissoryNoteDraft
 from signing_protocol import known_banks
 
+
 class FraudException(Exception):
     pass
+
 
 class AccountDeviceData(object):
     """The bank's view of a device belonging to a particular account."""
@@ -15,10 +17,11 @@ class AccountDeviceData(object):
     def __init__(self, public_key, cap=0):
         """Creates device data from a device's public key and a cap on
            the amount of money that can be issued in checks over the
-           course of a month."""
+           course of a month/week/other timespan ."""
         self.public_key = public_key
         self.check_counter = 0
         self.cap = cap
+        self.issued_check_value = 0
         self.unspent_checks = set()
 
     @property
@@ -35,15 +38,29 @@ class AccountDeviceData(object):
            unspent checks."""
         self.unspent_checks.remove(check)
 
+
+    def reset_issued_check_value_counter(self):
+        """Resets the issued check value counter back to the total unspent
+           check value for this device."""
+        self.issued_check_value = self.total_unspent_check_value
+
     def generate_check(self, value, bank):
         """Generates a check that has a particular max value. The check is
            signed immediately by the bank."""
         assert value <= self.cap
+
+        if self.issued_check_value + value > self.cap:
+            raise ValueError(
+                'Cannot issue a check worth %d because doing so would exceed '
+                'the cap for the device.' % value)
+
         # Generate a check.
         check = Check(bank.identifier, self.public_key, value,
                       self.check_counter)
         # Increment the check counter.
         self.check_counter += 1
+        # Add the check's value to the issued check value.
+        self.issued_check_value += value
         # Sign the check.
         check.sign(bank.private_key)
         self.unspent_checks.add(check)
@@ -92,7 +109,7 @@ class Account(object):
 class Bank(object):
     """The data store used by banks."""
 
-    def __init__(self, identifier, private_key=None, global_cap=1000):
+    def __init__(self, identifier, private_key=None, default_cap=1000):
         """Creates an empty bank data store from a unique identifier
            and a private key. Generates a private key automatically if
            none is specified."""
@@ -103,7 +120,7 @@ class Bank(object):
         self.identifier = identifier
         self.private_key = private_key
         self.public_key = private_key.public_key()
-        self.global_cap = global_cap
+        self.default_cap = default_cap
         self.accounts = {}
 
     def add_device(self, account, device_public_key):
@@ -111,7 +128,7 @@ class Bank(object):
            identified by a public key. Returns the data for the device."""
         exported_key = device_public_key.export_key(format='PEM')
         self.accounts[exported_key] = account
-        device_data = AccountDeviceData(device_public_key, self.global_cap)
+        device_data = AccountDeviceData(device_public_key, self.default_cap)
         account.devices[exported_key] = device_data
         return device_data
 
@@ -127,6 +144,12 @@ class Bank(object):
     def get_device(self, public_key):
         """Gets the data for the device with a particular public key."""
         return self.get_account(public_key).get_device(public_key)
+
+    def reset_issued_check_value_counters(self):
+        """Resets the issued check value counters for this month."""
+        for account in self.accounts.values():
+            for device in account.devices.values():
+                device.reset_issued_check_value_counter()
 
     def issue_check(self, public_key, value):
         """Issues a check of a particular value for the device associated
@@ -163,7 +186,8 @@ class Bank(object):
             assert buyer_account
             assert seller_account
 
-            buyer_device_data = buyer_account.get_device(check.owner_public_key)
+            buyer_device_data = buyer_account.get_device(
+                check.owner_public_key)
 
             if buyer_device_data.is_unspent(check):
                 buyer_device_data.spend_check(check)
