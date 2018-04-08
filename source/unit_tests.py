@@ -143,5 +143,43 @@ class TestSigningProtocol(unittest.TestCase):
         with self.assertRaises(FraudException):
             transfer(buyer_device, seller_device, 10)
 
+    def test_cap_enforcement(self):
+        """Tests that the bank enforces the cap on an account holder device."""
+        bank = Bank(42)
+        register_bank(bank)
+
+        buyer_device = AccountHolderDevice()
+        seller_device = AccountHolderDevice()
+
+        buyer_device.register_bank(bank.identifier, bank.public_key)
+        seller_device.register_bank(bank.identifier, bank.public_key)
+
+        buyer_account = Account("Eric Laermans")
+        seller_account = Account("Carrefour Berchem")
+
+        buyer_account.deposit(1000)
+
+        buyer_device_data = bank.add_device(buyer_account, buyer_device.public_key)
+        buyer_device_data.cap = 20
+        bank.add_device(seller_account, seller_device.public_key)
+
+        # Issue two check and spend one.
+        check = bank.issue_check(buyer_device.public_key, 10)
+        buyer_device.add_unspent_check(check)
+        buyer_device.add_unspent_check(bank.issue_check(buyer_device.public_key, 10))
+        transfer(buyer_device, seller_device, 10)
+
+        # Verify that issuing another check would exceed the cap.
+        with self.assertRaises(ValueError):
+            bank.issue_check(buyer_device.public_key, 10)
+
+        # Now reset the counters.
+        bank.reset_issued_check_value_counters()
+
+        # Verify that we can issue exactly one check worth 10.
+        buyer_device.add_unspent_check(bank.issue_check(buyer_device.public_key, 10))
+        with self.assertRaises(ValueError):
+            bank.issue_check(buyer_device.public_key, 10)
+
 if __name__ == '__main__':
     unittest.main()
