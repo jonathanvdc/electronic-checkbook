@@ -102,12 +102,12 @@ class TestSigningProtocol(unittest.TestCase):
         check = buyer_bank.issue_check(buyer_device.public_key, 10)
         buyer_device.add_unspent_check(check)
 
-        assert len(buyer_device.unspent_checks) == 1
+        assert len(buyer_device.all_unspent_checks()) == 1
         assert seller_device.promissory_note_counter == 0
 
         transfer(buyer_device, seller_device, 10)
 
-        assert len(buyer_device.unspent_checks) == 0
+        assert len(buyer_device.all_unspent_checks()) == 0
         assert seller_device.promissory_note_counter == 1
 
         assert buyer_account.balance == 990
@@ -179,6 +179,41 @@ class TestSigningProtocol(unittest.TestCase):
         buyer_device.add_unspent_check(bank.issue_check(buyer_device.public_key, 10))
         with self.assertRaises(ValueError):
             bank.issue_check(buyer_device.public_key, 10)
+    def test_check_choice(self):
+        """Tests that reasonable checks are chosen when transfering."""
+        buyer_bank = Bank(42)
+        seller_bank = Bank(43)
 
+        register_bank(buyer_bank)
+        register_bank(seller_bank)
+
+        buyer_device = AccountHolderDevice()
+        seller_device = AccountHolderDevice()
+
+        buyer_device.register_bank(buyer_bank.identifier, buyer_bank.public_key)
+        seller_device.register_bank(seller_bank.identifier, seller_bank.public_key)
+
+        buyer_account = Account("buyer")
+        seller_account = Account("seller")
+
+        buyer_account.deposit(1000)
+
+        buyer_bank.add_device(buyer_account, buyer_device.public_key, 1000)
+        seller_bank.add_device(seller_account, seller_device.public_key)
+        for value, times in [(5, 3), (10, 2), (50, 1), (100, 1), (20, 2)]:
+            for _ in range(times):
+                check = buyer_bank.issue_check(buyer_device.public_key, value)
+                buyer_device.add_unspent_check(check)
+
+        assert len(buyer_device.all_unspent_checks()) == 9
+        assert seller_device.promissory_note_counter == 0
+
+        transfer(buyer_device, seller_device, 99)
+        transfer(buyer_device, seller_device, 15)
+        transfer(buyer_device, seller_device, 55)
+        transfer(buyer_device, seller_device, 51)
+
+        assert buyer_account.balance == 780
+        assert seller_account.balance == 220
 if __name__ == '__main__':
     unittest.main()
