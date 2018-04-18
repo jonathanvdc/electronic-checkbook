@@ -2,22 +2,14 @@
 
 import pickle
 import io
-from Crypto.Hash import SHA256
+from Crypto.Hash import SHA3_256
 from Crypto.Signature import DSS
 from Crypto.PublicKey import ECC
 
 
 def sign_DSS(message, private_key):
     """Signs a particular message using a private key."""
-    # TODO: is SHA256 okay here? Probably not, but pycryptodome doesn't
-    # seem to implement SHA-3. So we should probably think about whether
-    # SHA256 is good enough for our purposes or not.
-    #
-    # According to NIST (https://www.nist.gov/news-events/news/2015/08/nist-releases-sha-3-cryptographic-hash-standard)
-    # SHA-2 is still very much secure and viable; SHA-3 is mostly there as an emergency backup in case
-    # the much feared collision-finding attacks on SHA-2 do eventually occur; also, SHA-2 displays better performance
-    # in software than SHA-3, so (given the constaints on our application) we should probably keep using SHA-2.
-    h = SHA256.new(message)
+    h = SHA3_256.new(message)
     # TODO: should we use 'fips-186-3' or the deterministic mode here?
     signer = DSS.new(private_key, 'fips-186-3')
     return signer.sign(h)
@@ -25,7 +17,7 @@ def sign_DSS(message, private_key):
 
 def verify_DSS(message, signature, public_key):
     """Verifies that a signature of a particular message is authentic."""
-    h = SHA256.new(message)
+    h = SHA3_256.new(message)
     verifier = DSS.new(public_key, 'fips-186-3')
     try:
         verifier.verify(h, signature)
