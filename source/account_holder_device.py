@@ -1,10 +1,10 @@
 """Implements the data store used by account holder devices."""
 
+import math
 from collections import deque, defaultdict
 from Crypto.PublicKey import ECC
 
-from promissory_note import Check, PromissoryNote, PromissoryNoteDraft
-import math
+from promissory_note import PromissoryNoteDraft
 
 class AccountHolderDevice(object):
     """The data store used by account holder devices."""

@@ -1,9 +1,8 @@
 """Implements the data store used by the bank."""
 
-from collections import deque
 from Crypto.PublicKey import ECC
 
-from promissory_note import Check, PromissoryNote, PromissoryNoteDraft
+from promissory_note import Check
 from signing_protocol import known_banks
 
 

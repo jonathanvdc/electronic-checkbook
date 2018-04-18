@@ -1,11 +1,13 @@
+"""A collection of unit tests for our electronic checkbook system"""
+
 import unittest
+import random
 from Crypto.PublicKey import ECC
 
 from bank import Bank, Account, AccountDeviceData, FraudException
 from account_holder_device import AccountHolderDevice
-from promissory_note import Serializable, Check, PromissoryNote, PromissoryNoteDraft
+from promissory_note import Check, PromissoryNote, PromissoryNoteDraft
 from signing_protocol import create_promissory_note, transfer, register_bank
-import random
 
 
 class TestAccountHolderDevice(unittest.TestCase):

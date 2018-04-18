@@ -1,7 +1,6 @@
 """Introduces the notions of a check, a promissory note draft and a promissory note."""
 
 import pickle
-import io
 from Crypto.Hash import SHA3_256
 from Crypto.Signature import DSS
 from Crypto.PublicKey import ECC

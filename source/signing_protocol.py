@@ -1,7 +1,6 @@
 """An implementation of the protocol for creating a fully signed promissory note."""
 
-from account_holder_device import AccountHolderDevice
-from promissory_note import Check, PromissoryNote, PromissoryNoteDraft
+from promissory_note import PromissoryNote
 
 bank_repository = []
 
