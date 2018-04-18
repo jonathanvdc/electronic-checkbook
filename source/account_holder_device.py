@@ -6,6 +6,7 @@ from Crypto.PublicKey import ECC
 
 from promissory_note import PromissoryNoteDraft
 
+
 class AccountHolderDevice(object):
     """The data store used by account holder devices."""
 
@@ -59,7 +60,6 @@ class AccountHolderDevice(object):
         self.promissory_note_counter += 1
         return draft
 
-
     def add_payment(self, draft):
         """Adds a number of checks to a particular promissory note draft."""
         assert draft.total_check_value == 0
@@ -77,7 +77,8 @@ class AccountHolderDevice(object):
         max_spending = int(math.ceil(remaining_value + remaining_value * self.max_overcharge))
         # use the estimate to filter out some check values.
         # => checks with higher value would never be used anyway
-        possible_values = sorted([x for x in self.unspent_checks.keys() if (self.unspent_checks[x]) and (x < max_spending)])
+        possible_values = \
+            sorted([x for x in self.unspent_checks.keys() if (self.unspent_checks[x]) and (x < max_spending)])
         # the number of usable checks with these values
         checks_per_value = [len(self.unspent_checks[x]) for x in possible_values]
 
@@ -90,10 +91,15 @@ class AccountHolderDevice(object):
             for value in possible_values[1:]:
                 biggest_unit = math.gcd(biggest_unit, value)
 
+            possible_values = [int(x / biggest_unit) for x in possible_values]
+            remaining_value = int(math.ceil(remaining_value / biggest_unit))
+            max_spending = int(
+                math.ceil(
+                    remaining_value +
+                    min(max(remaining_value * self.max_overcharge, possible_values[0]), possible_values[-1])
+                )
+            )
 
-            possible_values = [int(x/biggest_unit) for x in possible_values]
-            remaining_value = int(math.ceil(remaining_value/biggest_unit))
-            max_spending = int(math.ceil((remaining_value + min(max(remaining_value * self.max_overcharge, possible_values[0]), possible_values[-1]))))
             m = [None] * (max_spending + 1)
             # find the smallest combination of checks needed for different values
             for j, v in enumerate(possible_values):
@@ -105,9 +111,9 @@ class AccountHolderDevice(object):
                 for j, v in enumerate(possible_values):
                     if (i - v >= 0) and (m[i - v] is not None) and (m[i - v][1][j] > 0):
                         if (m[i] is None) or (len(m[i][0]) > (len(m[i - v][0]) + 1)):
-                            checks = list(m[i-v][0])
+                            checks = list(m[i - v][0])
                             checks.append(v)
-                            remaining = list(m[i-v][1])
+                            remaining = list(m[i - v][1])
                             remaining[j] -= 1
                             m[i] = (checks, remaining)
             # remove values that are too low.
@@ -115,11 +121,12 @@ class AccountHolderDevice(object):
             # calculate a score for each of the check combinations
             # TODO: it might be better to use a better scoring function:
             #       when low on low value checks => using less checks becomes more important
-            m = [((sum(x[0])*biggest_unit - draft.value) + len(x[0])*self.check_punishment, x) for x in m if x is not None]
+            m = [((sum(x[0]) * biggest_unit - draft.value) + len(x[0]) * self.check_punishment, x) for x in m if
+                 x is not None]
             remaining_value = draft.value
         if m:
             # if at least one valid check combination was found, use the combination with the best score
-            optimum = [x * biggest_unit for x in min(m, key=lambda x:x[0])[1][0]]
+            optimum = [x * biggest_unit for x in min(m, key=lambda x: x[0])[1][0]]
             for value in optimum:
                 unused_check = self.unspent_checks[value].popleft()
                 amount = min(remaining_value, unused_check.value)
@@ -136,7 +143,7 @@ class AccountHolderDevice(object):
                 biggest_unit = math.gcd(biggest_unit, value)
 
             check_values = iter(check_values)
-            pseudo_remaining_value = biggest_unit * (math.ceil(remaining_value/biggest_unit))
+            pseudo_remaining_value = biggest_unit * (math.ceil(remaining_value / biggest_unit))
 
             value = next(check_values, None)
             checks = []
@@ -150,11 +157,12 @@ class AccountHolderDevice(object):
                 else:
                     value = next(check_values, None)
             if remaining_value != 0:
-                value = min([x for x in self.unspent_checks.keys() if (self.unspent_checks[x]) and (x >= remaining_value)])
+                value = min(
+                    [x for x in self.unspent_checks.keys() if (self.unspent_checks[x]) and (x >= remaining_value)])
                 unused_check = self.unspent_checks[value].popleft()
                 checks.append([unused_check, remaining_value])
-                remaining_value = 0
-            #check if some checks can be omitted if so do so
+
+            # check if some checks can be omitted if so do so
             checks = checks[::-1]
             while True:
                 extra = sum([x[0].value for x in checks]) - draft.value

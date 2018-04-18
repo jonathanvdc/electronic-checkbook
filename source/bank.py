@@ -37,7 +37,6 @@ class AccountDeviceData(object):
            unspent checks."""
         self.unspent_checks.remove(check)
 
-
     def reset_issued_check_value_counter(self):
         """Resets the issued check value counter back to the total unspent
            check value for this device."""

@@ -181,6 +181,7 @@ class TestSigningProtocol(unittest.TestCase):
         buyer_device.add_unspent_check(bank.issue_check(buyer_device.public_key, 10))
         with self.assertRaises(ValueError):
             bank.issue_check(buyer_device.public_key, 10)
+
     def test_check_choice(self):
         """Tests that reasonable checks are chosen when transfering."""
         buyer_bank = Bank(42)
@@ -217,5 +218,7 @@ class TestSigningProtocol(unittest.TestCase):
 
         assert buyer_account.balance == 780
         assert seller_account.balance == 220
+
+
 if __name__ == '__main__':
     unittest.main()
