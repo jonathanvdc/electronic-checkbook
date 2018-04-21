@@ -7,7 +7,7 @@ from Crypto.PublicKey import ECC
 from bank import Bank, Account, AccountDeviceData, FraudException
 from account_holder_device import AccountHolderDevice
 from promissory_note import Check, PromissoryNote, PromissoryNoteDraft
-from signing_protocol import create_promissory_note, transfer, register_bank
+from signing_protocol import create_promissory_note, perform_transaction, register_bank
 
 
 class TestAccountHolderDevice(unittest.TestCase):
@@ -107,7 +107,7 @@ class TestSigningProtocol(unittest.TestCase):
         assert len(buyer_device.all_unspent_checks()) == 1
         assert seller_device.promissory_note_counter == 0
 
-        transfer(buyer_device, seller_device, 10)
+        perform_transaction(buyer_device, seller_device, 10)
 
         assert len(buyer_device.all_unspent_checks()) == 0
         assert seller_device.promissory_note_counter == 1
@@ -137,13 +137,13 @@ class TestSigningProtocol(unittest.TestCase):
         # Issue a check and spend it.
         check = bank.issue_check(buyer_device.public_key, 10)
         buyer_device.add_unspent_check(check)
-        transfer(buyer_device, seller_device, 10)
+        perform_transaction(buyer_device, seller_device, 10)
 
         # Now make the buyer device recycle that exact same check
         # (i.e., double-spend it).
         buyer_device.add_unspent_check(check)
         with self.assertRaises(FraudException):
-            transfer(buyer_device, seller_device, 10)
+            perform_transaction(buyer_device, seller_device, 10)
 
     def test_cap_enforcement(self):
         """Tests that the bank enforces the cap on an account holder device."""
@@ -168,7 +168,7 @@ class TestSigningProtocol(unittest.TestCase):
         check = bank.issue_check(buyer_device.public_key, 10)
         buyer_device.add_unspent_check(check)
         buyer_device.add_unspent_check(bank.issue_check(buyer_device.public_key, 10))
-        transfer(buyer_device, seller_device, 10)
+        perform_transaction(buyer_device, seller_device, 10)
 
         # Verify that issuing another check would exceed the cap.
         with self.assertRaises(ValueError):
@@ -211,10 +211,10 @@ class TestSigningProtocol(unittest.TestCase):
         assert len(buyer_device.all_unspent_checks()) == 9
         assert seller_device.promissory_note_counter == 0
 
-        transfer(buyer_device, seller_device, 99)
-        transfer(buyer_device, seller_device, 15)
-        transfer(buyer_device, seller_device, 55)
-        transfer(buyer_device, seller_device, 51)
+        perform_transaction(buyer_device, seller_device, 99)
+        perform_transaction(buyer_device, seller_device, 15)
+        perform_transaction(buyer_device, seller_device, 55)
+        perform_transaction(buyer_device, seller_device, 51)
 
         assert buyer_account.balance == 780
         assert seller_account.balance == 220
