@@ -19,6 +19,7 @@ class AccountHolderDevice(object):
 
         self.private_key = private_key
         self.public_key = private_key.public_key()
+        self.internet_connection = True  # TODO: effects when redeeming promissory notes
         self.promissory_note_counter = 0
         self.unspent_checks = defaultdict(deque)
         self.bank_keys = {}
@@ -59,6 +60,9 @@ class AccountHolderDevice(object):
                                     self.promissory_note_counter, amount)
         self.promissory_note_counter += 1
         return draft
+
+    def toggle_internet(self):
+        self.internet_connection = not self.internet_connection
 
     def add_payment(self, draft):
         """Adds a number of checks to a particular promissory note draft."""
@@ -180,4 +184,9 @@ class AccountHolderDevice(object):
         assert draft.total_check_value == draft.value
 
     def __str__(self) -> str:
-        return "Public key: {}\nPrivate key: {}\n".format(self.public_key, self.private_key)
+        result = "Public key: {}\nPrivate key: {}\n".format(self.public_key, self.private_key)
+        if len(self.unspent_checks) > 0:
+            result += "Checks:\n\n"
+            result += "\n\n".join(str(check) for value_queue in self.unspent_checks.values() for check in value_queue)
+            result += "\n"
+        return result
