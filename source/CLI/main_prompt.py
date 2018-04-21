@@ -1,8 +1,10 @@
 import shlex
 from cmd import Cmd
 
+
 class ArgException(Exception):
     pass
+
 
 class MainPrompt(Cmd):
 
@@ -33,8 +35,14 @@ class MainPrompt(Cmd):
 
         return
 
+    def do_EOF(self, line):
+        """Quit the application by pressing 'CTRL + D' or by typing 'EOF'\n"""
+        self.do_quit(line)
+
     def do_quit(self, args):
+        """Quit the application by pressing by typing 'quit'\n"""
         raise SystemExit
+
 
 if __name__ == '__main__':
     prompt = MainPrompt()

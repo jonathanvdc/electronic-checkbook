@@ -83,6 +83,7 @@ class AccountHolderDevice(object):
         checks_per_value = [len(self.unspent_checks[x]) for x in possible_values]
 
         m = []
+        biggest_unit = None
         if possible_values:
 
             # find the gcd of all check values.
