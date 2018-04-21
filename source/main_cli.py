@@ -73,7 +73,7 @@ class MainPrompt(Cmd):
         return value
 
     def do_bulk(self, args):
-        """Create objects in bulk"""
+        """Create objects in bulk."""
         pass
 
     def do_create(self, args):
@@ -115,22 +115,43 @@ class MainPrompt(Cmd):
             device = \
                 self.__get_choice("ahd", self.str_to_coll["ahd"], "For which account holder device?")
             amount = int(input("What amount? "))
-            result = bank.issue_check(device.public_key, amount)
+
+            try:
+                result = bank.issue_check(device.public_key, amount)
+                device.add_unspent_check(result)
+            except ValueError as e:
+                print(e)
+                return
 
         elif param == "pm":
-            device = \
-                self.__get_choice("ahd", self.str_to_coll["ahd"], "For which account holder device?")
+            seller_device = \
+                self.__get_choice("ahd", self.str_to_coll["ahd"], "Which account holder device is the seller?")
+            buyer_device = \
+                self.__get_choice("ahd", self.str_to_coll["ahd"], "Which account holder device is the buyer?")
             amount = int(input("What amount? "))
-            result = PromissoryNoteDraft(device.public_key, len(self.promissory_notes), amount)
+
+            # Create a draft promissory note.
+            result = seller_device.draft_promissory_note(amount)
+
+            # Have the buyer attach checks to it.
+            buyer_device.add_payment(result)
 
         else:
             print("*** Cannot create an instance of {}\n".format(param))
             return
 
-        print("Object creation successful\n____\n{}".format(result))
+        print("Object creation successful.\n____\n{}".format(result))
 
     def do_internet(self, args):
-        pass
+        """Toggle the internet connection of an account holder device.
+
+        Usage: internet
+        """
+
+        device = \
+            self.__get_choice("ahd", self.str_to_coll["ahd"], "For which account holder device?")
+        device.toggle_internet()
+        print("Device is now {}.\n".format("online" if device.internet_connection else "offline"))
 
     def do_list(self, args):
         """List all available objects of a certain type.
@@ -155,21 +176,36 @@ class MainPrompt(Cmd):
             print("*** Incorrect input given.\n")
             self.do_help('list')
 
-    def do_payment(self, args):
-        pass
-
     def do_register(self, args):
-        pass
+        """Register an account holder device at a bank.
+
+        Usage: register
+        """
+
+        device = \
+            self.__get_choice("ahd", self.str_to_coll["ahd"], "Which account holder device do you want to register?")
+
+        bank = \
+            self.__get_choice("bank", self.str_to_coll["bank"], "At which bank should the device be registered?")
+
+        device.register_bank(bank.identifier, bank.public_key)
+        print("Registration was successful.\n")
 
     def do_sign(self, args):
         pass
 
     def do_EOF(self, args):
-        """EOF: Quit the application by pressing 'CTRL + D' or by typing 'EOF'\n"""
+        """Quit the application by pressing 'CTRL + D' or by typing 'EOF',
+
+        Usage: EOF
+        """
         raise SystemExit
 
     def do_quit(self, args):
-        """quit: Quit the application by pressing by typing 'quit'\n"""
+        """Quit the application by pressing by typing 'quit'.
+
+        Usage: quit
+        """
         raise SystemExit
 
     def onecmd(self, args):
@@ -181,4 +217,3 @@ class MainPrompt(Cmd):
 
 if __name__ == '__main__':
     main = MainPrompt()
-

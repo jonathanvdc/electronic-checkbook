@@ -212,3 +212,8 @@ class PromissoryNote(Serializable):
         """Signs this promissory note using the buyer's private key."""
         self.buyer_signature = sign_DSS(
             self.draft_bytes + self.seller_signature, private_key)
+
+    def __str__(self) -> str:
+        return "Seller signature: {}\nBuyer_signature: {}\n" \
+            .format(self.seller_signature, self.buyer_signature)
+
