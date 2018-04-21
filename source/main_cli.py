@@ -4,8 +4,7 @@ from tabulate import tabulate
 
 from account_holder_device import AccountHolderDevice
 from bank import Bank, Account
-from promissory_note import PromissoryNoteDraft
-from signing_protocol import register_bank
+from signing_protocol import register_bank, create_promissory_note, verify_promissory_note, transfer, perform_transaction
 
 
 class ArgException(Exception):
@@ -29,7 +28,7 @@ class MainPrompt(Cmd):
             "bank": self.banks,
             "account": self.accounts,
             "ahd": self.ahds,
-            "pm": self.promissory_notes,
+            "pn": self.promissory_notes,
         }
 
         # start the prompt
@@ -79,7 +78,7 @@ class MainPrompt(Cmd):
     def do_create(self, args):
         """Create a single object.
 
-        Usage: create bank|account|ahd|check|pm
+        Usage: create bank|account|ahd|check|pn
         """
 
         if not self.__check_len_arg('create', args, [1]):
@@ -120,21 +119,19 @@ class MainPrompt(Cmd):
                 result = bank.issue_check(device.public_key, amount)
                 device.add_unspent_check(result)
             except ValueError as e:
-                print(e)
+                print("*** " + str(e))
                 return
 
-        elif param == "pm":
+        elif param == "pn":
             seller_device = \
                 self.__get_choice("ahd", self.str_to_coll["ahd"], "Which account holder device is the seller?")
             buyer_device = \
                 self.__get_choice("ahd", self.str_to_coll["ahd"], "Which account holder device is the buyer?")
             amount = int(input("What amount? "))
 
-            # Create a draft promissory note.
-            result = seller_device.draft_promissory_note(amount)
-
-            # Have the buyer attach checks to it.
-            buyer_device.add_payment(result)
+            # TODO: maybe split this process (especially signing protocol) for demonstration purposes
+            result = create_promissory_note(buyer_device, seller_device, amount)
+            self.promissory_notes.append([result])
 
         else:
             print("*** Cannot create an instance of {}\n".format(param))
@@ -156,7 +153,7 @@ class MainPrompt(Cmd):
     def do_list(self, args):
         """List all available objects of a certain type.
 
-        Usage: list bank|account|ahd|pm
+        Usage: list bank|account|ahd|pn
         """
         if not self.__check_len_arg('list', args, [1]):
             return
@@ -191,8 +188,51 @@ class MainPrompt(Cmd):
         device.register_bank(bank.identifier, bank.public_key)
         print("Registration was successful.\n")
 
-    def do_sign(self, args):
-        pass
+    def do_transaction(self, args):
+        """Transfers a particular amount of money from one account holder (the "buyer") to another (the "seller").
+
+        Usage: transaction
+        """
+
+        seller_device = \
+            self.__get_choice("ahd", self.str_to_coll["ahd"], "Which account holder device is the seller?")
+        buyer_device = \
+            self.__get_choice("ahd", self.str_to_coll["ahd"], "Which account holder device is the buyer?")
+        amount = int(input("What amount? "))
+
+        perform_transaction(buyer_device, seller_device, amount)
+        print("Transaction was successful.\n")
+
+    def do_transfer(self, args):
+        """Transfer a promissory note from a buyer device to the banks.
+        
+        Usage: transfer
+        """
+
+        buyer_device = \
+            self.__get_choice("ahd", self.str_to_coll["ahd"], "Which account holder device is the buyer?")
+
+        pn = \
+            self.__get_choice("pn", self.str_to_coll["pn"], "Which promissory note needs to be redeemed?")
+
+        transfer(pn, buyer_device)
+        print("Transfer was successful.\n")
+
+    def do_verify(self, args):
+        """Perform verification process on a promissory note.
+
+        Usage: verify
+        """
+
+        pn = \
+            self.__get_choice("pn", self.str_to_coll["pn"], "Which promissory note needs to be verified?")
+
+        try:
+            verify_promissory_note(pn)
+        except ValueError as e:
+            print("*** " + str(e))
+
+        print("Promissory note is correct.\n")
 
     def do_EOF(self, args):
         """Quit the application by pressing 'CTRL + D' or by typing 'EOF',
