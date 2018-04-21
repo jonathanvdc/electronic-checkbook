@@ -103,6 +103,10 @@ class Account(object):
         """Gets the device with a particular public key."""
         return self.devices[public_key.export_key(format='PEM')]
 
+    def __str__(self) -> str:
+        return "Owner: {}\nMax credit: {}\nBalance: {}\n" \
+            .format(self.owner, self.max_credit, self.balance)
+
 
 class Bank(object):
     """The data store used by banks."""
@@ -154,6 +158,7 @@ class Bank(object):
     def issue_check(self, public_key, value):
         """Issues a check of a particular value for the device associated
            with the given public key."""
+        # TODO: error if public key doesn't exist within the bank
         account = self.get_account(public_key)
         data = account.get_device(public_key)
 
@@ -197,3 +202,8 @@ class Bank(object):
 
             buyer_account.withdraw(amount)
             seller_account.deposit(amount)
+
+    def __str__(self) -> str:
+        return "Identifier: {}\nPublic key: {}\nPrivate Key: {}\n" \
+            .format(self.identifier, self.public_key, self.private_key)
+

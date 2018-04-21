@@ -111,6 +111,10 @@ class Check(Serializable):
         """Signs this check using the bank's private key."""
         self.signature = sign_DSS(self.__get_unsigned_bytes(), bank_private_key)
 
+    def __str__(self) -> str:
+        return "Identifier: {}\nBank id: {}\nValue: {}" \
+            .format(self.identifier, self.bank_id, self.value)
+
 
 class PromissoryNoteDraft(Serializable):
     """A draft promissory note, that is the unsigned part of a promissory note."""
@@ -151,6 +155,10 @@ class PromissoryNoteDraft(Serializable):
            the amount of currency that is assigned to it."""
         assert check.value >= amount
         self.checks.append((check, amount))
+
+    def __str__(self) -> str:
+        return "Identifier: {}\nSeller public key: {}\nValue: {}\n" \
+            .format(self.identifier, self.seller_public_key, self.value)
 
 
 class PromissoryNote(Serializable):

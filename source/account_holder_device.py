@@ -178,3 +178,6 @@ class AccountHolderDevice(object):
                 assert amount <= check.value
                 draft.append_check(check, amount)
         assert draft.total_check_value == draft.value
+
+    def __str__(self) -> str:
+        return "Public key: {}\nPrivate key: {}\n".format(self.public_key, self.private_key)
