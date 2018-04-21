@@ -18,7 +18,7 @@ class MainPrompt(Cmd):
         # parse args
         args = shlex.split(args)
         if len(args) != amount:
-            raise ArgException("not enough arguments provided \n" +
+            raise ArgException("*** Not enough arguments provided \n" +
                                "run 'help " + fun_name + "' for usage")
 
         return [types[i](arg) for i, arg in enumerate(args)]
@@ -35,13 +35,40 @@ class MainPrompt(Cmd):
 
         return
 
-    def do_EOF(self, line):
+    def do_create(self, args):
+        pass
+
+    def do_info(self, args):
+        pass
+
+    def do_internet(self, args):
+        pass
+
+    def do_list(self, args):
+        pass
+
+    def do_payment(self, args):
+        pass
+
+    def do_register(self, args):
+        pass
+
+    def do_sign(self, args):
+        pass
+
+    def do_EOF(self, args):
         """Quit the application by pressing 'CTRL + D' or by typing 'EOF'\n"""
-        self.do_quit(line)
+        raise SystemExit
 
     def do_quit(self, args):
         """Quit the application by pressing by typing 'quit'\n"""
         raise SystemExit
+
+    def onecmd(self, args):
+        try:
+            super().onecmd(args)
+        except SystemExit:
+            return input('Do you want to quit the application? (y/n): ') in ['y', 'Y']
 
 
 if __name__ == '__main__':
