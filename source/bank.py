@@ -219,7 +219,12 @@ class Bank(object):
             seller_account.deposit(amount)
 
     def to_json(self):
-        return {'Identifier': self.identifier, 'Public key': str(self.public_key), 'Private key': str(self.private_key)}
+        return {
+            'Identifier': self.identifier,
+            'Public key': str(self.public_key),
+            'Private key': str(self.private_key),
+            'Accounts': [account.to_json() for account in self.accounts]
+        }
 
     def __str__(self) -> str:
         return json.dumps(self.to_json(), indent=2)

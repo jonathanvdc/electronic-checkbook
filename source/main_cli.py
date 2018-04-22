@@ -200,8 +200,6 @@ class MainPrompt(Cmd):
         print("Device is now {}.\n".format(["offline", "online"][device.internet_connection]))
 
     def do_list(self, args):
-        # TODO: accounts should be listed for a certain bank, probably as detail of a bank...
-        # TODO: listing all accounts should also be possible
         """List all available objects of a certain type.
 
         Usage: list bank|account|ahd|pn
