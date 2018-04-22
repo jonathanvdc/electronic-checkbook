@@ -109,6 +109,13 @@ class MainPrompt(Cmd):
             self.ahds.append([result])
 
         elif param == "check":
+            if not len(self.banks):
+                print("No known banks to create check from. A bank will automatically be created... \n")
+                self.do_create('bank')
+            if not len(self.ahds):
+                print("No known ahds to create check for. An account holder device will automatically be created... \n")
+                self.do_create('ahd')
+
             bank = \
                 self.__get_choice("bank", self.str_to_coll["bank"], "Which bank should issue the check?")
             device = \
@@ -137,7 +144,7 @@ class MainPrompt(Cmd):
             print("*** Cannot create an instance of {}\n".format(param))
             return
 
-        print("Object creation successful:\n{}\n".format(result))
+        print("{} CREATION SUCCESSFUL:\n{}\n".format(param.upper(), result))
 
     def do_internet(self, args):
         """Toggle the internet connection of an account holder device.
@@ -148,7 +155,7 @@ class MainPrompt(Cmd):
         device = \
             self.__get_choice("ahd", self.str_to_coll["ahd"], "For which account holder device?")
         device.toggle_internet()
-        print("Device is now {}.\n".format("online" if device.internet_connection else "offline"))
+        print("Device is now {}.\n".format(["offline", "online"][device.internet_connection]))
 
     def do_list(self, args):
         """List all available objects of a certain type.
