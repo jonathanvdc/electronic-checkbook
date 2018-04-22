@@ -4,7 +4,8 @@ from tabulate import tabulate
 
 from account_holder_device import AccountHolderDevice
 from bank import Bank, Account
-from signing_protocol import register_bank, create_promissory_note, verify_promissory_note, transfer, perform_transaction
+from signing_protocol import register_bank, create_promissory_note, verify_promissory_note, transfer, \
+    perform_transaction, known_banks
 
 
 class ArgException(Exception):
@@ -17,9 +18,6 @@ class MainPrompt(Cmd):
         super().__init__()
         self.prompt = 'SimPay $ '
 
-        self.id = 0
-
-        self.banks = []
         self.promissory_notes = []
 
         # start the prompt
@@ -42,7 +40,7 @@ class MainPrompt(Cmd):
 
         return True
 
-    def __get_choice(self, collection_name, collection, prompt, extra_args = []):
+    def __get_choice(self, collection_name, collection, prompt, extra_args=[]):
         if not len(collection):
             if collection_name == "bank":
                 print("No known banks. A bank will automatically be created... \n")
@@ -79,15 +77,15 @@ class MainPrompt(Cmd):
 
         return value
 
-    def _ahds(self, account = None):
+    def _ahds(self, account=None):
         if account is None:
             return [ahd for account in self._accounts() for ahd in list(account.devices.values())]
         else:
             return list(account.devices.values())
 
-    def _accounts(self, bank = None):
+    def _accounts(self, bank=None):
         if bank is None:
-            return [account for bank in self.banks for account in bank.accounts]
+            return [account for bank in known_banks() for account in bank.accounts]
         else:
             return bank.accounts
 
@@ -111,8 +109,7 @@ class MainPrompt(Cmd):
             param = param[0].lower()
 
         if param == "bank":
-            result = Bank(len(self.banks))  # TODO: optional parameters?
-            self.banks.append(result)
+            result = Bank(len(known_banks()))  # TODO: optional parameters?
             register_bank(result)
 
         elif param == "account":
@@ -123,7 +120,7 @@ class MainPrompt(Cmd):
 
         elif param == "check":
             bank = \
-                self.__get_choice("bank", self.banks, "Which bank should issue the check?")
+                self.__get_choice("bank",  known_banks(), "Which bank should issue the check?")
             device = \
                 self.__get_choice("ahd", self._ahds(), "For which account holder device?")
             amount = int(input("What amount? "))
@@ -155,7 +152,7 @@ class MainPrompt(Cmd):
     def create_account(self, bank=None):
         if bank is None:
             bank = \
-                self.__get_choice("bank", self.banks, "Under which bank will this account be registered?")
+                self.__get_choice("bank",  known_banks(), "Under which bank will this account be registered?")
         owner = input("Under which name do you want to create an account? ")
         max_credit = input("Max credit for account? (leave blank for default) ")
         if max_credit:
@@ -175,7 +172,7 @@ class MainPrompt(Cmd):
     def create_ahd(self, bank=None, account=None):
         if bank is None:
             bank = \
-                self.__get_choice("bank", self.banks, "Under which bank is the account registered?")
+                self.__get_choice("bank", known_banks(), "Under which bank is the account registered?")
         if account is None:
             if not bank.accounts:
                 account = self.create_account(bank)
@@ -218,7 +215,7 @@ class MainPrompt(Cmd):
                 bank = None
                 if input('\nFilter on bank? (y/n): ') in ['y', 'Y']:
                     bank = \
-                        self.__get_choice("bank", self.banks, "Select a bank.")
+                        self.__get_choice("bank", known_banks(), "Select a bank.")
 
                 table = list(map(lambda x: [x], self._accounts(bank)))
             elif param == "ahd":
@@ -229,7 +226,7 @@ class MainPrompt(Cmd):
 
                 table = list(map(lambda x: [x], self._ahds(account)))
             elif param == "bank":
-                table = list(map(lambda x: [x], self.banks))
+                table = list(map(lambda x: [x], known_banks()))
             else:
                 table = list(map(lambda x: [x], self.promissory_notes))
 
