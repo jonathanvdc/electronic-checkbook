@@ -52,6 +52,21 @@ class MainPrompt(Cmd):
         return True
 
     def __get_choice(self, collection_name, collection, prompt):
+        if not len(collection):
+            if collection_name == "bank":
+                print("No known banks to create check from. A bank will automatically be created... \n")
+                self.do_create('bank')
+            elif collection_name == "ahd":
+                print("No known ahds to create check for. An account holder device will automatically be created... \n")
+                self.do_create('ahd')
+            elif collection_name == "account":
+                print("Please create an account first\n")
+                self.do_create("account")
+
+        if len(collection) == 1:
+            print("The sole {} in the system was automatically selected.\n".format(collection_name))
+            return collection[0][0]
+
         while True:
             answer = input(prompt + " (type 'l' to see the available choices) ")
 
@@ -109,13 +124,6 @@ class MainPrompt(Cmd):
             self.ahds.append([result])
 
         elif param == "check":
-            if not len(self.banks):
-                print("No known banks to create check from. A bank will automatically be created... \n")
-                self.do_create('bank')
-            if not len(self.ahds):
-                print("No known ahds to create check for. An account holder device will automatically be created... \n")
-                self.do_create('ahd')
-
             bank = \
                 self.__get_choice("bank", self.str_to_coll["bank"], "Which bank should issue the check?")
             device = \
