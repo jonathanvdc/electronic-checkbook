@@ -3,6 +3,7 @@
 import json
 from Crypto.PublicKey import ECC
 
+from account_holder_device import AccountHolderDevice
 from promissory_note import Check
 from signing_protocol import known_banks
 
@@ -104,6 +105,9 @@ class Account(object):
         """Gets the device with a particular public key."""
         return self.devices[public_key.export_key(format='PEM')]
 
+    def add_device(self, ahd):
+        self.devices[ahd.public_key.export_key(format='PEM')] = ahd
+
     def to_json(self):
         return {'Owner': self.owner, 'Max credit': self.max_credit, 'Balance': self.balance}
 
@@ -126,7 +130,15 @@ class Bank(object):
         self.private_key = private_key
         self.public_key = private_key.public_key()
         self.default_cap = default_cap
-        self.accounts = {}
+        self.ahd_to_account = {}
+        self.accounts = []
+
+    def register_account(self, account):
+        if not account.devices:
+            return
+        for device in account.devices.values():
+            self.ahd_to_account[device.public_key.export_key(format='PEM')] = account
+        self.accounts.append(account)
 
     def add_device(self, account, device_public_key, cap=None):
         """Associates a new device with an account. The device to add is
@@ -134,7 +146,7 @@ class Bank(object):
         if cap is None:
             cap = self.default_cap
         exported_key = device_public_key.export_key(format='PEM')
-        self.accounts[exported_key] = account
+        self.ahd_to_account[exported_key] = account
         device_data = AccountDeviceData(device_public_key, cap)
         account.devices[exported_key] = device_data
         return device_data
@@ -142,11 +154,11 @@ class Bank(object):
     def has_account(self, public_key):
         """Verifies whether a particular public key has been
         registered with this bank."""
-        return public_key.export_key(format='PEM') in self.accounts
+        return public_key.export_key(format='PEM') in self.ahd_to_account
 
     def get_account(self, public_key):
         """Gets the account that owns a particular public key."""
-        return self.accounts[public_key.export_key(format='PEM')]
+        return self.ahd_to_account[public_key.export_key(format='PEM')]
 
     def get_device(self, public_key):
         """Gets the data for the device with a particular public key."""
@@ -154,7 +166,7 @@ class Bank(object):
 
     def reset_issued_check_value_counters(self):
         """Resets the issued check value counters for this month."""
-        for account in self.accounts.values():
+        for account in self.ahd_to_account.values():
             for device in account.devices.values():
                 device.reset_issued_check_value_counter()
 

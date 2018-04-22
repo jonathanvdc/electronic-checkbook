@@ -20,16 +20,7 @@ class MainPrompt(Cmd):
         self.id = 0
 
         self.banks = []
-        self.accounts = []
-        self.ahds = []
         self.promissory_notes = []
-
-        self.str_to_coll = {
-            "bank": self.banks,
-            "account": self.accounts,
-            "ahd": self.ahds,
-            "pn": self.promissory_notes,
-        }
 
         # start the prompt
         self.cmdloop("Simple Payments - version 0.0.1")
@@ -51,31 +42,33 @@ class MainPrompt(Cmd):
 
         return True
 
-    def __get_choice(self, collection_name, collection, prompt):
+    def __get_choice(self, collection_name, collection, prompt, extra_args = []):
         if not len(collection):
             if collection_name == "bank":
-                print("No known banks to create check from. A bank will automatically be created... \n")
+                print("No known banks. A bank will automatically be created... \n")
                 self.do_create('bank')
             elif collection_name == "ahd":
-                print("No known ahds to create check for. An account holder device will automatically be created... \n")
-                self.do_create('ahd')
+                print("No known AHDs. Please create an AHD... \n")
+                self.create_ahd(*extra_args)
             elif collection_name == "account":
-                print("Please create an account first\n")
-                self.do_create("account")
+                print("No known accounts. Please create an account.")
+                self.create_account(*extra_args)
 
         if len(collection) == 1:
             print("The sole {} in the system was automatically selected.\n".format(collection_name))
-            return collection[0][0]
+            return collection[0]
 
         while True:
             answer = input(prompt + " (type 'l' to see the available choices) ")
 
             if answer == 'l':
-                self.do_list(collection_name)
+                table = list(map(lambda x: [x], collection))
+                table.insert(0, ["#", collection_name.capitalize() + "s"])
+                print(tabulate(table, headers="firstrow", showindex=True) + "\n")
                 continue
 
             try:
-                value = collection[int(answer)][0]
+                value = collection[int(answer)]
                 break
             except ValueError:
                 print("*** Incorrect input given.\n")
@@ -85,6 +78,18 @@ class MainPrompt(Cmd):
                 continue
 
         return value
+
+    def _ahds(self, account = None):
+        if account is None:
+            return [ahd for account in self._accounts() for ahd in account.devices.values()]
+        else:
+            return account.devices.values()
+
+    def _accounts(self, bank = None):
+        if bank is None:
+            return [account for bank in self.banks for account in bank.accounts]
+        else:
+            return bank.accounts
 
     def do_bulk(self, args):
         """Create objects in bulk."""
@@ -107,27 +112,20 @@ class MainPrompt(Cmd):
 
         if param == "bank":
             result = Bank(len(self.banks))  # TODO: optional parameters?
-            self.banks.append([result])
+            self.banks.append(result)
             register_bank(result)
 
         elif param == "account":
-            owner = input("Under which name do you want to create an account? ")
-            max_credit = input("Max credit for account? (leave blank for default) ")
-            if max_credit:
-                result = Account(owner, int(max_credit))
-            else:
-                result = Account(owner)
-            self.accounts.append([result])
+            result = self.create_account()
 
         elif param == "ahd":
-            result = AccountHolderDevice()
-            self.ahds.append([result])
+            result = self.create_ahd()
 
         elif param == "check":
             bank = \
-                self.__get_choice("bank", self.str_to_coll["bank"], "Which bank should issue the check?")
+                self.__get_choice("bank", self.banks, "Which bank should issue the check?")
             device = \
-                self.__get_choice("ahd", self.str_to_coll["ahd"], "For which account holder device?")
+                self.__get_choice("ahd", self._ahds(), "For which account holder device?")
             amount = int(input("What amount? "))
 
             try:
@@ -139,20 +137,52 @@ class MainPrompt(Cmd):
 
         elif param == "pn":
             seller_device = \
-                self.__get_choice("ahd", self.str_to_coll["ahd"], "Which account holder device is the seller?")
+                self.__get_choice("ahd", self._ahds(), "Which account holder device is the seller?")
             buyer_device = \
-                self.__get_choice("ahd", self.str_to_coll["ahd"], "Which account holder device is the buyer?")
+                self.__get_choice("ahd", self._ahds(), "Which account holder device is the buyer?")
             amount = int(input("What amount? "))
 
             # TODO: maybe split this process (especially signing protocol) for demonstration purposes
             result = create_promissory_note(buyer_device, seller_device, amount)
-            self.promissory_notes.append([result])
+            self.promissory_notes.append(result)
 
         else:
             print("*** Cannot create an instance of {}\n".format(param))
             return
 
         print("{} CREATION SUCCESSFUL:\n{}\n".format(param.upper(), result))
+
+    def create_account(self, bank=None):
+        if bank is None:
+            bank = \
+                self.__get_choice("bank", self.banks, "Under which bank will this account be registered?")
+        owner = input("Under which name do you want to create an account? ")
+        max_credit = input("Max credit for account? (leave blank for default) ")
+        if max_credit:
+            result = Account(owner, int(max_credit))
+        else:
+            result = Account(owner)
+
+        device = AccountHolderDevice()
+        # automatically create device for account
+        result.add_device(device)
+        print("\nAn AHD was automatically created {}\n".format(device))
+        # register account at bank
+        bank.register_account(result)
+        print("The account was successfully registered with the given bank.\n")
+        return result
+
+    def create_ahd(self, bank=None, account=None):
+        if bank is None:
+            bank = \
+                self.__get_choice("bank", self.banks, "Under which bank is the account registered?")
+        if account is None:
+            account = \
+                self.__get_choice("account", bank.accounts, "For which account is this ahd?")
+        result = AccountHolderDevice()
+        account.add_device(result)
+        bank.add_device(account, result.public_key)
+        return result
 
     def do_internet(self, args):
         """Toggle the internet connection of an account holder device.
@@ -161,11 +191,13 @@ class MainPrompt(Cmd):
         """
 
         device = \
-            self.__get_choice("ahd", self.str_to_coll["ahd"], "For which account holder device?")
+            self.__get_choice("ahd", self._ahds(), "For which account holder device?")
         device.toggle_internet()
         print("Device is now {}.\n".format(["offline", "online"][device.internet_connection]))
 
     def do_list(self, args):
+        # TODO: accounts should be listed for a certain bank, probably as detail of a bank...
+        # TODO: listing all accounts should also be possible
         """List all available objects of a certain type.
 
         Usage: list bank|account|ahd|pn
@@ -180,28 +212,31 @@ class MainPrompt(Cmd):
             param = param[0].lower()
 
         try:
-            table = self.str_to_coll[param][:]
+            if param == "account":
+                bank = None
+                if input('\nFilter on bank? (y/n): ') in ['y', 'Y']:
+                    bank = \
+                        self.__get_choice("bank", self.banks, "Select a bank.")
+
+                table = list(map(lambda x: [x], self._accounts(bank)))
+            elif param == "ahd":
+                account = None
+                if input('\nFilter on account? (y/n): ') in ['y', 'Y']:
+                    account = \
+                        self.__get_choice("account", self._accounts(), "Select an account.")
+
+                table = list(map(lambda x: [x], self._ahds(account)))
+            elif param == "bank":
+                table = list(map(lambda x: [x], self.banks))
+            else:
+                table = list(map(lambda x: [x], self.promissory_notes))
+
             table.insert(0, ["#", param.capitalize() + "s"])
 
             print(tabulate(table, headers="firstrow", showindex=True) + "\n")  # tablefmt="grid"
         except KeyError:
             print("*** Incorrect input given.\n")
             self.do_help('list')
-
-    def do_register(self, args):
-        """Register an account holder device at a bank.
-
-        Usage: register
-        """
-
-        device = \
-            self.__get_choice("ahd", self.str_to_coll["ahd"], "Which account holder device do you want to register?")
-
-        bank = \
-            self.__get_choice("bank", self.str_to_coll["bank"], "At which bank should the device be registered?")
-
-        device.register_bank(bank.identifier, bank.public_key)
-        print("Registration was successful.\n")
 
     def do_transaction(self, args):
         """Transfers a particular amount of money from one account holder (the "buyer") to another (the "seller").
@@ -210,9 +245,9 @@ class MainPrompt(Cmd):
         """
 
         seller_device = \
-            self.__get_choice("ahd", self.str_to_coll["ahd"], "Which account holder device is the seller?")
+            self.__get_choice("ahd", self._ahds(), "Which account holder device is the seller?")
         buyer_device = \
-            self.__get_choice("ahd", self.str_to_coll["ahd"], "Which account holder device is the buyer?")
+            self.__get_choice("ahd", self._ahds(), "Which account holder device is the buyer?")
         amount = int(input("What amount? "))
 
         perform_transaction(buyer_device, seller_device, amount)
@@ -225,10 +260,10 @@ class MainPrompt(Cmd):
         """
 
         buyer_device = \
-            self.__get_choice("ahd", self.str_to_coll["ahd"], "Which account holder device is the buyer?")
+            self.__get_choice("ahd", self._ahds(), "Which account holder device is the buyer?")
 
         pn = \
-            self.__get_choice("pn", self.str_to_coll["pn"], "Which promissory note needs to be redeemed?")
+            self.__get_choice("pn", self.promissory_notes, "Which promissory note needs to be redeemed?")
 
         transfer(pn, buyer_device)
         print("Transfer was successful.\n")
@@ -240,7 +275,7 @@ class MainPrompt(Cmd):
         """
 
         pn = \
-            self.__get_choice("pn", self.str_to_coll["pn"], "Which promissory note needs to be verified?")
+            self.__get_choice("pn", self.promissory_notes, "Which promissory note needs to be verified?")
 
         try:
             verify_promissory_note(pn)
