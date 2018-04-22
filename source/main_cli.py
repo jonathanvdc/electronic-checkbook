@@ -137,7 +137,7 @@ class MainPrompt(Cmd):
             print("*** Cannot create an instance of {}\n".format(param))
             return
 
-        print("Object creation successful.\n____\n{}".format(result))
+        print("Object creation successful:\n{}\n".format(result))
 
     def do_internet(self, args):
         """Toggle the internet connection of an account holder device.
@@ -168,7 +168,7 @@ class MainPrompt(Cmd):
             table = self.str_to_coll[param][:]
             table.insert(0, ["#", param.capitalize() + "s"])
 
-            print(tabulate(table, headers="firstrow", showindex=True) + "\n")
+            print(tabulate(table, headers="firstrow", showindex=True) + "\n")  # tablefmt="grid"
         except KeyError:
             print("*** Incorrect input given.\n")
             self.do_help('list')
@@ -253,6 +253,9 @@ class MainPrompt(Cmd):
             super().onecmd(args)
         except SystemExit:
             return input('\nDo you want to quit the application? (y/n): ') in ['y', 'Y']
+        except KeyboardInterrupt:  # Press 'CTRL + C' to cancel a command
+            print()
+            pass
 
 
 if __name__ == '__main__':

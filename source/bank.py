@@ -1,5 +1,6 @@
 """Implements the data store used by the bank."""
 
+import json
 from Crypto.PublicKey import ECC
 
 from promissory_note import Check
@@ -103,9 +104,11 @@ class Account(object):
         """Gets the device with a particular public key."""
         return self.devices[public_key.export_key(format='PEM')]
 
+    def to_json(self):
+        return {'Owner': self.owner, 'Max credit': self.max_credit, 'Balance': self.balance}
+
     def __str__(self) -> str:
-        return "Owner: {}\nMax credit: {}\nBalance: {}\n" \
-            .format(self.owner, self.max_credit, self.balance)
+        return json.dumps(self.to_json(), indent=2)
 
 
 class Bank(object):
@@ -203,7 +206,8 @@ class Bank(object):
             buyer_account.withdraw(amount)
             seller_account.deposit(amount)
 
-    def __str__(self) -> str:
-        return "Identifier: {}\nPublic key: {}\nPrivate Key: {}\n" \
-            .format(self.identifier, self.public_key, self.private_key)
+    def to_json(self):
+        return {'Identifier': self.identifier, 'Public key': str(self.public_key), 'Private key': str(self.private_key)}
 
+    def __str__(self) -> str:
+        return json.dumps(self.to_json(), indent=2)

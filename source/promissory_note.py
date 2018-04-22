@@ -1,6 +1,7 @@
 """Introduces the notions of a check, a promissory note draft and a promissory note."""
 
 import pickle
+import json
 from Crypto.Hash import SHA3_256
 from Crypto.Signature import DSS
 from Crypto.PublicKey import ECC
@@ -111,9 +112,11 @@ class Check(Serializable):
         """Signs this check using the bank's private key."""
         self.signature = sign_DSS(self.__get_unsigned_bytes(), bank_private_key)
 
+    def to_json(self):
+        return {'Identifier': self.identifier, 'Bank id': self.bank_id, 'Value': self.value}
+
     def __str__(self) -> str:
-        return "Identifier: {}\nBank id: {}\nValue: {}" \
-            .format(self.identifier, self.bank_id, self.value)
+        return json.dumps(self.to_json(), indent=2)
 
 
 class PromissoryNoteDraft(Serializable):
@@ -156,9 +159,11 @@ class PromissoryNoteDraft(Serializable):
         assert check.value >= amount
         self.checks.append((check, amount))
 
+    def to_json(self):
+        return {'Identifier': self.identifier, 'Seller public key': str(self.seller_public_key), 'Value': self.value}
+
     def __str__(self) -> str:
-        return "Identifier: {}\nSeller public key: {}\nValue: {}\n" \
-            .format(self.identifier, self.seller_public_key, self.value)
+        return json.dumps(self.to_json(), indent=2)
 
 
 class PromissoryNote(Serializable):
@@ -213,7 +218,8 @@ class PromissoryNote(Serializable):
         self.buyer_signature = sign_DSS(
             self.draft_bytes + self.seller_signature, private_key)
 
-    def __str__(self) -> str:
-        return "Seller signature: {}\nBuyer_signature: {}\n" \
-            .format(self.seller_signature, self.buyer_signature)
+    def to_json(self):
+        return {'Seller signature': str(self.seller_signature), 'Buyer Signature': str(self.buyer_signature)}
 
+    def __str__(self) -> str:
+        return json.dumps(self.to_json(), indent=2)

@@ -1,6 +1,7 @@
 """Implements the data store used by account holder devices."""
 
 import math
+import json
 from collections import deque, defaultdict
 from Crypto.PublicKey import ECC
 
@@ -183,10 +184,12 @@ class AccountHolderDevice(object):
                 draft.append_check(check, amount)
         assert draft.total_check_value == draft.value
 
+    def to_json(self):
+        return {
+            'Public key': str(self.public_key),
+            'Private key': str(self.private_key),
+            'Checks': [check.to_json() for value_queue in self.unspent_checks.values() for check in value_queue]
+        }
+
     def __str__(self) -> str:
-        result = "Public key: {}\nPrivate key: {}\n".format(self.public_key, self.private_key)
-        if len(self.unspent_checks) > 0:
-            result += "Checks:\n\n"
-            result += "\n\n".join(str(check) for value_queue in self.unspent_checks.values() for check in value_queue)
-            result += "\n"
-        return result
+        return json.dumps(self.to_json(), indent=2)
