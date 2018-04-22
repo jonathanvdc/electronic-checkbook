@@ -81,9 +81,9 @@ class MainPrompt(Cmd):
 
     def _ahds(self, account = None):
         if account is None:
-            return [ahd for account in self._accounts() for ahd in account.devices.values()]
+            return [ahd for account in self._accounts() for ahd in list(account.devices.values())]
         else:
-            return account.devices.values()
+            return list(account.devices.values())
 
     def _accounts(self, bank = None):
         if bank is None:
@@ -177,8 +177,12 @@ class MainPrompt(Cmd):
             bank = \
                 self.__get_choice("bank", self.banks, "Under which bank is the account registered?")
         if account is None:
-            account = \
-                self.__get_choice("account", bank.accounts, "For which account is this ahd?")
+            if not bank.accounts:
+                account = self.create_account(bank)
+                return list(account.devices.values())[0]
+            else:
+                account = \
+                    self.__get_choice("account", bank.accounts, "For which account is this ahd?", [bank])
         result = AccountHolderDevice()
         account.add_device(result)
         bank.add_device(account, result.public_key)
