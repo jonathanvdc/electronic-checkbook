@@ -6,6 +6,7 @@ from Crypto.PublicKey import ECC
 from account_holder_device import AccountHolderDevice
 from promissory_note import Check
 from signing_protocol import known_banks
+from datetime import date
 
 
 class FraudException(Exception):
@@ -15,13 +16,14 @@ class FraudException(Exception):
 class AccountDeviceData(object):
     """The bank's view of a device belonging to a particular account."""
 
-    def __init__(self, public_key, cap=0):
+    def __init__(self, public_key, cap=0, monthly_cap=2000):
         """Creates device data from a device's public key and a cap on
            the amount of money that can be issued in checks over the
            course of a month/week/other timespan ."""
         self.public_key = public_key
         self.check_counter = 0
         self.cap = cap
+        self.monthly_cap = monthly_cap
         self.issued_check_value = 0
         self.unspent_checks = set()
 
@@ -34,15 +36,22 @@ class AccountDeviceData(object):
         """Checks if a check has not yet been spent."""
         return check in self.unspent_checks
 
-    def spend_check(self, check):
+    def spend_check(self, check, amount=0):
         """Spends a check. This action removes the check from the set of
            unspent checks."""
         self.unspent_checks.remove(check)
+        self.cap -= amount
 
     def reset_issued_check_value_counter(self):
         """Resets the issued check value counter back to the total unspent
            check value for this device."""
         self.issued_check_value = self.total_unspent_check_value
+
+    def reset_monthly_spending_cap(self):
+        """Resets the 'remaining allowed' spending cap to the full monthly
+           spending cap for this device. (meant to be used at the start of
+           each month)"""
+        self.cap = self.monthly_cap
 
     def generate_check(self, value, bank):
         """Generates a check that has a particular max value. The check is
@@ -170,6 +179,12 @@ class Bank(object):
             for device in account.devices.values():
                 device.reset_issued_check_value_counter()
 
+    def reset_monthly_spending_caps(self):
+        """Resets the spending caps for this month."""
+        for account in self.ahd_to_account.values():
+            for device in account.devices.values():
+                device.reset_monthly_spending_cap()
+
     def issue_check(self, public_key, value):
         """Issues a check of a particular value for the device associated
            with the given public key."""
@@ -187,6 +202,7 @@ class Bank(object):
         # Actually generate the check.
         return data.generate_check(value, self)
 
+    # TODO: Check if promisory note is still valid (and add time-limit field to, eh, some class.... (make it a universal constant?)
     def redeem_promissory_note(self, note):
         """Actually does the transfer of payments for the relevant checks
            contained within a given promissory note."""
@@ -195,6 +211,10 @@ class Bank(object):
 
         relevant_checks = filter(lambda c: c[0].bank_id == self.identifier,
                                  note.draft.checks)
+
+        # Checks if the note's transaction date falls in the current month, and thus affects this month's running spending cap
+        affects_cap = note.draft.transaction_date.year == date.today().year \
+            and note.draft.transaction_date.month == date.today().month
         for check, amount in relevant_checks:
             buyer_account = self.get_account(check.owner_public_key)
             seller_bank = list(
@@ -210,7 +230,10 @@ class Bank(object):
                 check.owner_public_key)
 
             if buyer_device_data.is_unspent(check):
-                buyer_device_data.spend_check(check)
+                if affects_cap:
+                    buyer_device_data.spend_check(check, amount)
+                else:
+                    buyer_device_data.spend_check(check)
             else:
                 raise FraudException(
                     'Oh lawd %s is double-spending!' % buyer_account.owner)
