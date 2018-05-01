@@ -5,6 +5,7 @@ import json
 from Crypto.Hash import SHA3_256
 from Crypto.Signature import DSS
 from Crypto.PublicKey import ECC
+from datetime import date, datetime
 
 
 def sign_DSS(message, private_key):
@@ -130,6 +131,7 @@ class PromissoryNoteDraft(Serializable):
         self.identifier = identifier
         self.value = value
         self.checks = []
+        self.transaction_date = date.today()
 
     def __getstate__(self):
         """Retrieves the state of this object for serialization."""
@@ -138,7 +140,8 @@ class PromissoryNoteDraft(Serializable):
         return {'seller_public_key': self.seller_public_key.export_key(format='PEM'),
                 'identifier': self.identifier,
                 'value': self.value,
-                'checks': self.checks}
+                'checks': self.checks,
+                'transaction_date': self.transaction_date.strftime('%d%m%Y')}
 
     def __setstate__(self, state):
         """Sets the state of this object for deserialization."""
@@ -146,6 +149,7 @@ class PromissoryNoteDraft(Serializable):
         self.identifier = state['identifier']
         self.value = state['value']
         self.checks = state['checks']
+        self.transaction_date = datetime.strptime(state['transaction_date'], '%d%m%Y').date()
 
     @property
     def total_check_value(self):
@@ -159,6 +163,7 @@ class PromissoryNoteDraft(Serializable):
         assert check.value >= amount
         self.checks.append((check, amount))
 
+    # TODO: Should transaction date be include din the JSON representation? See also 'PromissoryNote'
     def to_json(self):
         return {'Identifier': self.identifier, 'Seller public key': str(self.seller_public_key), 'Value': self.value}
 
@@ -208,6 +213,12 @@ class PromissoryNote(Serializable):
         """Verifies whether the individual checks contained by this promissory note are valid; that is,
         whether their individually contained values do not exceed their respective maximum values."""
         return all(map(lambda check: check[0].value >= check[1], self.draft.checks))
+
+    @property
+    def has_correct_transaction_date(self):
+        """Verifies whether the transaction date corresponds to the current date.
+        Returns a Boolean reflecting the truth of this property"""
+        return self.draft.transaction_date == date.today()
 
     def sign_seller(self, private_key):
         """Signs this promissory note using the seller's private key."""
