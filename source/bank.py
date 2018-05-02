@@ -24,7 +24,6 @@ class AccountDeviceData(object):
         self.check_counter = 0
         self.cap = cap
         self.monthly_cap = monthly_cap
-        self.issued_check_value = 0
         self.unspent_checks = set()
         self.awaiting_claim = set()
 
@@ -48,11 +47,6 @@ class AccountDeviceData(object):
         self.unspent_checks.remove(check)
         self.cap -= amount
 
-    def reset_issued_check_value_counter(self):
-        """Resets the issued check value counter back to the total unspent
-           check value for this device."""
-        self.issued_check_value = self.total_unspent_check_value
-
     def reset_monthly_spending_cap(self):
         """Resets the 'remaining allowed' spending cap to the full monthly
            spending cap for this device. (meant to be used at the start of
@@ -73,7 +67,7 @@ class AccountDeviceData(object):
            signed immediately by the bank."""
         assert value <= self.cap
 
-        if self.issued_check_value + value > self.cap:
+        if self.total_unspent_check_value + value > self.cap:
             raise ValueError(
                 'Cannot issue a check worth %d because doing so would exceed '
                 'the cap for the device.' % value)
@@ -83,8 +77,6 @@ class AccountDeviceData(object):
                       self.check_counter)
         # Increment the check counter.
         self.check_counter += 1
-        # Add the check's value to the issued check value.
-        self.issued_check_value += value
         # Sign the check.
         check.sign(bank.private_key)
         self.unspent_checks.add(check)
@@ -200,12 +192,6 @@ class Bank(object):
     def get_device(self, public_key):
         """Gets the data for the device with a particular public key."""
         return self.get_account(public_key).get_device(public_key)
-
-    def reset_issued_check_value_counters(self):
-        """Resets the issued check value counters for this month."""
-        for account in self.ahd_to_account.values():
-            for device in account.devices.values():
-                device.reset_issued_check_value_counter()
 
     def reset_monthly_spending_caps(self):
         """Resets the spending caps for this month."""
