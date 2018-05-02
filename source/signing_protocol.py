@@ -50,10 +50,6 @@ def verify_promissory_note(promissory_note):
         raise ValueError("Some of the checks contained within the promissory note "
                          "list values exceeding their respective maximum values.")
 
-    # Verify the transaction date
-    if not promissory_note.has_correct_transaction_date:
-        raise ValueError("The transaction date is not equivalent to the current date.")
-
 
 def transfer(promissory_note, buyer_device):
     """Transfer a promissory note from a buyer device to the banks."""

@@ -62,6 +62,10 @@ class AccountDeviceData(object):
                 self.cap += note.value
             self.awaiting_claim.remove(note)
 
+    def remove_expired_checks(self):
+        """Removes all checks that can no longer be claimed from the unspent checks set."""
+        self.unspent_checks = set(filter(lambda b: not b.unredeemable, self.unspent_checks))
+
     def generate_check(self, value, bank):
         """Generates a check that has a particular max value. The check is
            signed immediately by the bank."""
@@ -112,6 +116,12 @@ class Account(object):
         devices associated with this account."""
         for device in self.devices:
             device.remove_expired_notes()
+
+    def remove_expired_checks(self):
+        """Removes all the expired checks that can no longer be claimed, from all
+        devices associated with this account."""
+        for device in self.devices:
+            device.remove_expired_checks()
 
     def deposit(self, amount):
         """Deposits a certain amount of cash into this account."""
@@ -209,6 +219,7 @@ class Bank(object):
         # Make sure that issuing a new check will not exceed the balance + credit - 'unclaimed note value'
         # for the account.
         account.remove_expired_notes()
+        account.remove_expired_checks()
         if account.balance - account.total_unclaimed_note_value + account.max_credit < account.total_unspent_check_value + value:
             raise ValueError(
                 'Check cannot be issued because doing so would exceed '
@@ -260,6 +271,10 @@ class Bank(object):
                 # This case occurs when the note was handed in before by the buyer and the unspent checks have already been cleared,
                 # but has already been removed from the 'awaiting claim' set again by the bank itself because it expired.
                 pass
+            elif check.unredeemable:
+                # This case occurs when the note is still claimable but somehow contains an unredeemable check
+                raise FraudException(
+                    'Oh lawd %s used expired checks for the transaction!' % buyer_account.owner)
             else:
                 raise FraudException(
                     'Oh lawd %s is double-spending or %s is double-redeeming!' % buyer_account.owner, seller_account.owner)

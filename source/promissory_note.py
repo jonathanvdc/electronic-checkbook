@@ -5,9 +5,11 @@ import json
 from Crypto.Hash import SHA3_256
 from Crypto.Signature import DSS
 from Crypto.PublicKey import ECC
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 DAYS_VALID = 10
+CHECK_EXPIRATION = 100
+
 
 def sign_DSS(message, private_key):
     """Signs a particular message using a private key."""
@@ -71,6 +73,7 @@ class Check(Serializable):
         self.value = value
         self.identifier = identifier
         self.signature = signature
+        self.expiration_date = date.today() + timedelta(CHECK_EXPIRATION)
 
     def __eq__(self, other):
         """Tests if this check equals another check."""
@@ -88,7 +91,8 @@ class Check(Serializable):
                 'owner_public_key': self.owner_public_key.export_key(format='PEM'),
                 'value': self.value,
                 'identifier': self.identifier,
-                'signature': self.signature}
+                'signature': self.signature,
+                'issue_date': self.issue_date.strftime('%d%m%Y')}
 
     def __setstate__(self, state):
         """Sets the state of this object for deserialization."""
@@ -97,12 +101,23 @@ class Check(Serializable):
         self.value = state['value']
         self.identifier = state['identifier']
         self.signature = state['signature']
+        self.issue_date = datetime.strptime(state['issue_date'], '%d%m%Y').date()
 
     def __get_unsigned_version(self):
         return Check(self.bank_id, self.owner_public_key, self.value, self.identifier, b'')
 
     def __get_unsigned_bytes(self):
         return self.__get_unsigned_version().to_bytes()
+
+    @property
+    def expired(self):
+        """Indicates if the check has expired and thus can no longer be used in promissory notes."""
+        return date.today() > self.expiration_date
+
+    @property
+    def unredeemable(self):
+        """Indicates if the check can no longer be redeemed by sellers."""
+        return date.today() > self.expiration_date + timedelta(DAYS_VALID)
 
     @property
     def is_signature_authentic(self, bank_public_key):
