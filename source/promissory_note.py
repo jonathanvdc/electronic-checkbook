@@ -7,6 +7,7 @@ from Crypto.Signature import DSS
 from Crypto.PublicKey import ECC
 from datetime import date, datetime
 
+DAYS_VALID = 10
 
 def sign_DSS(message, private_key):
     """Signs a particular message using a private key."""
@@ -133,6 +134,14 @@ class PromissoryNoteDraft(Serializable):
         self.checks = []
         self.transaction_date = date.today()
 
+    def __eq__(self, other):
+        """Tests if this draft note equals another draft note."""
+        return self.__getstate__() == other.__getstate__()
+
+    def __hash__(self):
+        """Computes a hash value for this draft."""
+        return hash(frozenset(self.__getstate__().items()))
+
     def __getstate__(self):
         """Retrieves the state of this object for serialization."""
         # Apparently the public key used by the pycrypto module wasn't supported by pickle,
@@ -156,6 +165,17 @@ class PromissoryNoteDraft(Serializable):
         """Gets the sum of the amounts with which the checks in this
            promissory note draft are annotated."""
         return sum(amount for _, amount in self.checks)
+
+    @property
+    def is_claimable(self):
+        """Indicates if the note is still claimable (if its transaction date falls within
+        a set amount of days of the current date)"""
+        return (date.today() - self.transaction_date).days <= DAYS_VALID
+
+    @property
+    def affects_monthly_cap(self):
+        """Indicates whether the note's transaction date falls in the current month, and thus affects this month's running spending cap"""
+        return self.transaction_date.year == date.today().year and self.transaction_date.month == date.today().month
 
     def append_check(self, check, amount):
         """Adds a check to this promissory note draft and annotates it with
