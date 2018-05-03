@@ -1,9 +1,8 @@
 """Implements the data store used by the bank."""
 
 import json
-from Crypto.PublicKey import ECC
 
-from account_holder_device import AccountHolderDevice
+from Crypto.PublicKey import ECC
 from promissory_note import Check
 from signing_protocol import known_banks
 
@@ -66,6 +65,18 @@ class AccountDeviceData(object):
         self.unspent_checks.add(check)
         return check
 
+    def to_json(self):
+        return {
+            'Public key': str(self.public_key),
+            'Check Counter': str(self.check_counter),
+            'cap': str(self.cap),
+            'Issued Check Value': str(self.issued_check_value),
+            'Unspent Checks': [check.to_json() for check in self.unspent_checks]
+        }
+
+    def __str__(self) -> str:
+        return json.dumps(self.to_json(), indent=2)
+
 
 class Account(object):
     """Describes an account at a bank."""
@@ -112,13 +123,13 @@ class Account(object):
         return {'Owner': self.owner, 'Max credit': self.max_credit, 'Balance': self.balance}
 
     def __str__(self) -> str:
-        return json.dumps(self.to_json(), indent=2)
+        return json.dumps(self.to_json(), indent=2, default=lambda x: x.to_json())
 
 
 class Bank(object):
     """The data store used by banks."""
 
-    def __init__(self, identifier, private_key=None, default_cap=0):
+    def __init__(self, id, private_key=None, default_cap=0):
         """Creates an empty bank data store from a unique identifier
            and a private key. Generates a private key automatically if
            none is specified."""
@@ -126,18 +137,14 @@ class Bank(object):
             # Generate an ECC private key.
             private_key = ECC.generate(curve='P-256')
 
-        self.identifier = identifier
+        self.id = id
         self.private_key = private_key
         self.public_key = private_key.public_key()
         self.default_cap = default_cap
         self.ahd_to_account = {}
         self.accounts = []
 
-    def register_account(self, account):
-        if not account.devices:
-            return
-        for device in account.devices.values():
-            self.ahd_to_account[device.public_key.export_key(format='PEM')] = account
+    def add_account(self, account):
         self.accounts.append(account)
 
     def add_device(self, account, device_public_key, cap=None):
@@ -193,7 +200,7 @@ class Bank(object):
         assert note.is_buyer_signature_authentic
         assert note.is_seller_signature_authentic
 
-        relevant_checks = filter(lambda c: c[0].bank_id == self.identifier,
+        relevant_checks = filter(lambda c: c[0].bank_id == self.id,
                                  note.draft.checks)
         for check, amount in relevant_checks:
             buyer_account = self.get_account(check.owner_public_key)
@@ -220,11 +227,11 @@ class Bank(object):
 
     def to_json(self):
         return {
-            'Identifier': self.identifier,
+            'Identifier': self.id,
             'Public key': str(self.public_key),
             'Private key': str(self.private_key),
             'Accounts': [account.to_json() for account in self.accounts]
         }
 
     def __str__(self) -> str:
-        return json.dumps(self.to_json(), indent=2)
+        return json.dumps(self.to_json(), indent=2, default=lambda x: x.to_json())
