@@ -1,5 +1,6 @@
 import json
 import shlex
+
 from cmd import Cmd
 from collections import defaultdict
 from json import JSONEncoder
@@ -11,10 +12,8 @@ from bank import Bank, Account
 from signing_protocol import register_bank, create_promissory_note, verify_promissory_note, transfer, \
     perform_transaction, known_banks
 
-
 class ArgException(Exception):
     pass
-
 
 class Person(JSONEncoder):
     def __init__(self, name):
@@ -117,7 +116,7 @@ class MainPrompt(Cmd):
     def do_list(self, args):
         """List all available objects of a certain type.
 
-        Usage: list bank|account|ahd|pn
+        Usage: list banks|accounts|ahds|pns|people
         """
         if not self._check_len_arg_('list', args, [1]):
             return
@@ -129,26 +128,29 @@ class MainPrompt(Cmd):
             param = param[0].lower()
 
         try:
-            if param == "account":
+            table = []
+            if param == "accounts":
                 bank = None
                 if input('\nFilter on bank? (y/n): ') in ['y', 'Y']:
                     bank = \
                         self._get_choice_("bank", known_banks(), "Select a bank.")
 
                 table = list(map(lambda x: [x], self.accounts(bank)))
-            elif param == "ahd":
+            elif param == "ahds":
                 account = None
                 if input('\nFilter on account? (y/n): ') in ['y', 'Y']:
                     account = \
                         self._get_choice_("account", self.accounts(), "Select an account.")
 
                 table = list(map(lambda x: [x], self.ahds(account)))
-            elif param == "bank":
+            elif param == "banks":
                 table = list(map(lambda x: [x], known_banks()))
-            else:
+            elif param == "pns":
                 table = list(map(lambda x: [x], self.promissory_notes))
+            elif param == "people":
+                table = list(map(lambda x: [x], self.people))
 
-            table.insert(0, ["#", param.capitalize() + "s"])
+            table.insert(0, ["#", param])
 
             print(tabulate(table, headers="firstrow", showindex=True) + "\n")  # tablefmt="grid"
         except KeyError:
