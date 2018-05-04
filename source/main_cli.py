@@ -4,7 +4,6 @@ import shlex
 from cmd import Cmd
 from collections import defaultdict
 from json import JSONEncoder
-
 from tabulate import tabulate
 
 from account_holder_device import AccountHolderDevice
@@ -12,8 +11,6 @@ from bank import Bank, Account
 from signing_protocol import register_bank, create_promissory_note, verify_promissory_note, transfer, \
     perform_transaction, known_banks
 
-class ArgException(Exception):
-    pass
 
 class Person(JSONEncoder):
     def __init__(self, name):
@@ -200,6 +197,7 @@ class MainPrompt(Cmd):
             verify_promissory_note(pn)
         except ValueError as e:
             print("*** " + str(e))
+            return
 
         print("Promissory note is correct.\n")
 
@@ -354,7 +352,10 @@ class MainPrompt(Cmd):
 
         return True
 
-    def _get_choice_(self, collection_name, collection, prompt, extra_args=[]):
+    def _get_choice_(self, collection_name, collection, prompt, extra_args=None):
+        if extra_args is None:
+            extra_args = []
+
         if not len(collection):
             if collection_name == "bank":
                 print("No known banks. A bank will automatically be created... \n")
