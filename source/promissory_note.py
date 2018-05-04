@@ -335,8 +335,8 @@ class PromissoryNote(Serializable):
 
     def to_json(self):
         return {
-            'Seller signature': str(self.seller_signature),
-            'Buyer Signature': str(self.buyer_signature)
+            'Seller signature': ''.join('{:02x}'.format(x) for x in self.seller_signature),
+            'Buyer Signature': ''.join('{:02x}'.format(x) for x in self.buyer_signature)
         }
 
     def __str__(self) -> str:
