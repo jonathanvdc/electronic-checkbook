@@ -1,6 +1,5 @@
 """Introduces the notions of a check, a promissory note draft and a promissory note."""
 
-import pickle
 import json
 import struct
 from Crypto.Hash import SHA3_256
@@ -67,7 +66,7 @@ def uint64_from_bytes(value):
 
 
 def bytestring_from_bytes(value):
-    """Encodes a byte string as a length-prefixed sequence of bytes.
+    """Decodes a byte string as a length-prefixed sequence of bytes.
        Returns the decoded byte string and the remainder of
        the byte string"""
     length, data = uint32_from_bytes(value)
@@ -84,11 +83,11 @@ class Serializable(object):
     """A base class for objects that can be encoded and decoded again."""
 
     def to_bytes(self):
-        pass
+        raise NotImplementedError
 
     @staticmethod
     def from_bytes(source):
-        pass
+        raise NotImplementedError
 
 
 class Check(Serializable):
@@ -119,8 +118,7 @@ class Check(Serializable):
 
     def __getstate__(self):
         """Retrieves the state of this object for serialization."""
-        # Apparently the public key used by the pycrypto module wasn't supported by pickle,
-        # but it was possible to force the issue but using the key's built-in serialization
+        # pycrypto's built-in serialization for the public key is used
         return {
             'bank_id': self.bank_id,
             'owner_public_key': self.owner_public_key.export_key(format='PEM'),
@@ -160,7 +158,6 @@ class Check(Serializable):
                      ECC.import_key(owner_public_key), value, identifier,
                      signature)
 
-    @property
     def is_signature_authentic(self, bank_public_key):
         """Verifies the bank's signature. Returns a Boolean
            that tells if the signature is authentic."""

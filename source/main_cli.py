@@ -100,10 +100,8 @@ class MainPrompt(Cmd):
         except AttributeError:
             return
         except CreationException as e:
-            print(str(e))
+            print("*** " + str(e))
             return
-
-
 
         if result:
             print("{} CREATION SUCCESSFUL:\n{}\n".format(param.upper(), result))
@@ -136,7 +134,6 @@ class MainPrompt(Cmd):
             param = param[0].lower()
 
         try:
-            table = []
             if param == "accounts":
                 bank = None
                 if input('\nFilter on bank? (y/n): ') in ['y', 'Y']:
@@ -194,7 +191,7 @@ class MainPrompt(Cmd):
                 self._get_choice_("pn", self.promissory_notes, "Which promissory note needs to be redeemed?")
             transfer(pn, buyer_device)
         except CreationException as e:
-            print(str(e))
+            print("*** " + str(e))
             return
 
         print("Transfer was successful.\n")
@@ -288,7 +285,6 @@ class MainPrompt(Cmd):
             bank.add_device(account, result.public_key)
 
         account.owner.add_ahd(result)
-
         return result
 
     def create_check(self):
@@ -321,7 +317,7 @@ class MainPrompt(Cmd):
             self.promissory_notes.append(result)
             return result
         except ValueError as e:
-            print(str(e))
+            print("*** " + str(e))
             raise CreationException("Could not create promissory note")
 
     """
