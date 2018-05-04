@@ -14,6 +14,11 @@ from signing_protocol import register_bank, create_promissory_note, verify_promi
     perform_transaction, known_banks
 
 
+class CreationException(Exception):
+    def __init__(self, *args, **kwargs):
+        Exception.__init__(self, *args, **kwargs)
+
+
 class Person(JSONEncoder):
     def __init__(self, name):
         super().__init__()
@@ -91,10 +96,14 @@ class MainPrompt(Cmd):
 
         try:
             creator = getattr(self, "create_" + param)
+            result = creator()
         except AttributeError:
             return
+        except CreationException as e:
+            print(str(e))
+            return
 
-        result = creator()
+
 
         if result:
             print("{} CREATION SUCCESSFUL:\n{}\n".format(param.upper(), result))
@@ -177,14 +186,17 @@ class MainPrompt(Cmd):
 
         Usage: transfer
         """
+        try:
+            buyer_device = \
+                self._get_choice_("ahd", self.ahds(), "Which account holder device is the buyer?")
 
-        buyer_device = \
-            self._get_choice_("ahd", self.ahds(), "Which account holder device is the buyer?")
+            pn = \
+                self._get_choice_("pn", self.promissory_notes, "Which promissory note needs to be redeemed?")
+            transfer(pn, buyer_device)
+        except CreationException as e:
+            print(str(e))
+            return
 
-        pn = \
-            self._get_choice_("pn", self.promissory_notes, "Which promissory note needs to be redeemed?")
-
-        transfer(pn, buyer_device)
         print("Transfer was successful.\n")
 
     def do_verify(self, args):
@@ -275,7 +287,6 @@ class MainPrompt(Cmd):
         else:
             bank.add_device(account, result.public_key)
 
-
         account.owner.add_ahd(result)
 
         return result
@@ -305,9 +316,13 @@ class MainPrompt(Cmd):
         amount = int(input("What amount? "))
 
         # TODO: maybe split this process (especially signing protocol) for demonstration purposes
-        result = create_promissory_note(buyer_device, seller_device, amount)
-        self.promissory_notes.append(result)
-        return result
+        try:
+            result = create_promissory_note(buyer_device, seller_device, amount)
+            self.promissory_notes.append(result)
+            return result
+        except ValueError as e:
+            print(str(e))
+            raise CreationException("Could not create promissory note")
 
     """
        ___  ___  _____  _____  ___  ___  ___ 
