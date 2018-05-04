@@ -129,7 +129,7 @@ class Account(object):
 class Bank(object):
     """The data store used by banks."""
 
-    def __init__(self, id, private_key=None, default_cap=0):
+    def __init__(self, identifier, private_key=None, default_cap=0):
         """Creates an empty bank data store from a unique identifier
            and a private key. Generates a private key automatically if
            none is specified."""
@@ -137,7 +137,7 @@ class Bank(object):
             # Generate an ECC private key.
             private_key = ECC.generate(curve='P-256')
 
-        self.id = id
+        self.identifier = identifier
         self.private_key = private_key
         self.public_key = private_key.public_key()
         self.default_cap = default_cap
@@ -200,7 +200,7 @@ class Bank(object):
         assert note.is_buyer_signature_authentic
         assert note.is_seller_signature_authentic
 
-        relevant_checks = filter(lambda c: c[0].bank_id == self.id,
+        relevant_checks = filter(lambda c: c[0].bank_id == self.identifier,
                                  note.draft.checks)
         for check, amount in relevant_checks:
             buyer_account = self.get_account(check.owner_public_key)
@@ -227,7 +227,7 @@ class Bank(object):
 
     def to_json(self):
         return {
-            'Identifier': self.id,
+            'Identifier': self.identifier,
             'Public key': str(self.public_key),
             'Private key': str(self.private_key),
             'Accounts': [account.to_json() for account in self.accounts]
