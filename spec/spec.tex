@@ -293,7 +293,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 	The identity of a seller cannot be authenticated when the buyer is offline. This is not a real problem because a promissory note signed by an inauthentic seller is worth nothing---the bank will not redeem it. So it is decidedly against the seller's interests to use a public, private key pair that is not tied to their account.
 	
-	\subsubsection{Theft}
+	\subsubsection{Theft of promissory notes}
 
 	An attacker can steal a compromised offline seller's unredeemed promissory notes. Such an event is decidedly unfortunate for the seller, but the attacker cannot steal the value of the unredeemed promissory notes because they are not transferable: a promissory note negotiates the transfer of money from a particular buyer to a particular seller. 
 
@@ -347,10 +347,28 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 	\end{itemize}
 
 	To summarize, there are no fortunes to be made here and the attacker will likely get arrested quickly. It is far more profitable to just rob a store outright. Coincidentally, that also takes less skill, time and investment on the attacker's part.
+
+	\subsubsection{Theft of account holder device}
+
+	An attacker might steal an account holder device---or the data it contains. This attack is not addressed directly by the payment system.
+
+	In practice, implementations should encrypt sensitive information on account holder devices. It would be unwise indeed to store unspent checks and account holder device's private key as plain text. A PIN, password or other authentication mechanism can be used to unlock access to the encrypted data on account holder devices.
+
+	An attacker might still coerce an account holder into giving up their PIN or password, but other payment systems such as credit cards and cash are also vulnerable to this particular attack.
+
+	\section{Conclusion}
+
+	This document proposed a lightweight approach to agreeing on and executing payments, with an emphasis on data integrity, non-repudiation and data-origin authentication.
 	
+	Typical attacks such as forging checks and stealing promissory notes are mitigated by the way data is encoded.
+
+	More sophisticated attacks such as double-spending checks cannot always be \emph{prevented,} but they can be \emph{detected} after the fact. Action can subsequently be taken to deal with bad-faith actors.
+
+	Some attacks are not mitigated because they \emph{cannot} in fact be mitigated. This final category includes device + PIN/password theft, an attack that works for essentially all payment systems.
+
 	\bibliographystyle{acm}
 	\bibliography{spec} 
-	
+
 	\end{multicols}
 
 \end{document}
