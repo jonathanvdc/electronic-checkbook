@@ -25,8 +25,8 @@ def create_promissory_note(buyer_device, seller_device, amount):
 
     # Sign the damn thing already.
     note = PromissoryNote(draft.to_bytes())
-    note = PromissoryNote.sign_seller(note.to_bytes(), seller_device.private_key)
-    note = PromissoryNote.sign_buyer(note.to_bytes(), buyer_device.private_key)
+    note = PromissoryNote.from_bytes(PromissoryNote.sign_seller(note.to_bytes(), seller_device.private_key))
+    note = PromissoryNote.from_bytes(PromissoryNote.sign_buyer(note.to_bytes(), buyer_device.private_key))
 
     return note
 

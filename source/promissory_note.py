@@ -278,12 +278,6 @@ class PromissoryNote(Serializable):
            fully-signed promissory note."""
         return PromissoryNoteDraft.from_bytes(self.draft_bytes)
 
-    def seller_signature(self):
-        return self.seller_signature
-
-    def buyer_signature(self):
-        return self.buyer_signature
-
     @property
     def is_seller_signature_authentic(self):
         """Verifies the seller's signature. Returns a Boolean
@@ -314,18 +308,30 @@ class PromissoryNote(Serializable):
 
     @staticmethod
     def sign_seller(note_bytes, private_key):
-        """Signs this promissory note using the seller's private key."""
+        """Signs a promissory note using the seller's private key
+        and returns the byte representation of the note."""
         note = PromissoryNote.from_bytes(note_bytes)
         seller_signature = sign_DSS(note.draft.to_bytes(), private_key)
-        return PromissoryNote(note.draft.to_bytes(), seller_signature)
+        note.sign_with_seller_signature(seller_signature)
+        return note.to_bytes()
 
     @staticmethod
     def sign_buyer(note_bytes, private_key):
-        """Signs this promissory note using the buyer's private key."""
+        """Signs a promissory note using the buyer's private key
+        and returns the byte representation of the note."""
         note = PromissoryNote.from_bytes(note_bytes)
         buyer_signature = sign_DSS(
             note.draft.to_bytes() + note.seller_signature, private_key)
-        return PromissoryNote(note.draft.to_bytes(), note.seller_signature, buyer_signature)
+        note.sign_with_buyer_signature(buyer_signature)
+        return note.to_bytes()
+
+    def sign_with_seller_signature(self, seller_signature):
+        """Sets the seller signature of this promissory note."""
+        self.seller_signature = seller_signature
+
+    def sign_with_buyer_signature(self, buyer_signature):
+        """Sets the buyer signature of this promissory note."""
+        self.buyer_signature = buyer_signature
 
     def to_json(self):
         return {
