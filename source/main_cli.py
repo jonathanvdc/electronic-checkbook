@@ -352,23 +352,20 @@ class MainPrompt(Cmd):
 
         return True
 
-    def _get_choice_(self, collection_name, collection, prompt, extra_args=None):
+    def _get_choice_(self, collection_name, collection, prompt, extra_args=()):
         if extra_args is None:
             extra_args = []
 
         if not len(collection):
-            if collection_name == "bank":
-                print("No known banks. A bank will automatically be created... \n")
-                self.do_create('bank')
-            elif collection_name == "ahd":
-                print("No known AHDs. Please create an AHD... \n")
-                self.create_ahd(*extra_args)
-            elif collection_name == "account":
-                print("No known accounts. Please create an account.")
-                self.create_account(*extra_args)
-            elif collection_name == "person":
-                print("No known people. Please register a person.")
-                self.create_person()
+            try:
+                creator = getattr(self, "create_" + collection_name)
+            except AttributeError:
+                return
+
+            print("A {} needs to be created as none are available.".format(collection_name))
+            res = creator(*extra_args)
+            print("{} has been created and selected...\n".format(collection_name))
+            return res
 
         if len(collection) == 1:
             print("The sole {} in the system was automatically selected.\n".format(collection_name))
