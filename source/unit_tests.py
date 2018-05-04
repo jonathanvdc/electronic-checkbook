@@ -52,7 +52,8 @@ class TestSerializable(unittest.TestCase):
         random.seed(None)
         check = data.generate_check(random.randint(1, 10), bank)
         serialized = check.to_bytes()
-        Check.from_bytes(serialized)
+        deserialized = Check.from_bytes(serialized)
+        assert deserialized.to_bytes() == serialized
 
     def test_serialize_promissory_note_draft(self):
         """Tests that a promissory note draft can be serialized."""
@@ -60,7 +61,8 @@ class TestSerializable(unittest.TestCase):
         random.seed(None)
         draft = device.draft_promissory_note(random.randint(1, 10))
         serialized = draft.to_bytes()
-        PromissoryNoteDraft.from_bytes(serialized)
+        deserialized = PromissoryNoteDraft.from_bytes(serialized)
+        assert deserialized.to_bytes() == serialized
 
     def test_serialize_promisory_note(self):
         """Tests that a promisory note can be serialized."""
@@ -69,7 +71,8 @@ class TestSerializable(unittest.TestCase):
         draft = device.draft_promissory_note(random.randint(1, 10))
         note = PromissoryNote(draft.to_bytes())
         serialized = note.to_bytes()
-        PromissoryNote.from_bytes(serialized)
+        deserialized = PromissoryNote.from_bytes(serialized)
+        assert deserialized.to_bytes() == serialized
 
 
 class TestSigningProtocol(unittest.TestCase):
