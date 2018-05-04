@@ -202,7 +202,9 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 		\item \textbf{Length-prefixed strings.} A length-prefixed string consists of a 32-bit unsigned integer followed by $n$ bytes, where $n$ is the integer prefix.
 		
 		\item \textbf{Signatures.} A signature is a special kind of length-prefixed string. The contents of a signature are obtained by first taking the SHA3-256 hash of the data to which the signature pertains and then applying the FIPS 186-4 (EC)DSA algorithm to that hash \cite{fips-202-sha3, fips-186-4-dss}.
-
+		
+		\item \textbf{Lists.} A list of items.
+		
 	\end{itemize}
 
 	\subsection{Key types}
@@ -231,6 +233,23 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 	\subsection{Promissory notes}
  
+ The actual promissory notes, which are encoded and decoded on multiple occasions during the signing process, can be subdivided in two categories: the draft and the actual promissory note. However, as the draft is actually a nascent promissory note, this subdivision is in fact artificial. A promissory note is therefore encoded as a concatenation of the following fields:
+ 
+	 \begin{description}
+		\item[\textbf{\texttt{seller\_public\_key}} (length-prefixed string)]  The public key of the account holder device of the seller, encoded as a UTF-8 string in the PEM format \cite{rfc-pem}.
+
+		\item[\texttt{identifier} (64-bit unsigned integer)] An identifier that uniquely defines the promissory note.
+
+		\item[\texttt{value} (32-bit unsigned  integer)] The total amount of money transferred by the note.
+
+		\item[\texttt{checks} (list of Checks)] A list of Checks, each of which is encoded according to the previous subsection. 
+
+		\item[\texttt{seller\_signature} (signature)] A signature of all aforementioned fields, signed by the seller device using its private key.
+		
+		\item[\texttt{buyer\_signature} (signature)] A signature of all aforementioned fields, signed by the buyer device using its private key.
+	\end{description}
+ 
+  
 
 	\section{Online and offline behavior}
 

@@ -209,14 +209,18 @@ class PromissoryNote(Serializable):
         whether their individually contained values do not exceed their respective maximum values."""
         return all(map(lambda check: check[0].value >= check[1], self.draft.checks))
 
-    def sign_seller(self, private_key):
+    @staticmethod
+    def sign_seller(note_bytes, private_key):
         """Signs this promissory note using the seller's private key."""
-        self.seller_signature = sign_DSS(self.draft_bytes, private_key)
+        note = PromissoryNote.from_bytes(note_bytes)
+        note.seller_signature = sign_DSS(note.draft_bytes, private_key)
 
-    def sign_buyer(self, private_key):
+    @staticmethod
+    def sign_buyer(note_bytes, private_key):
         """Signs this promissory note using the buyer's private key."""
-        self.buyer_signature = sign_DSS(
-            self.draft_bytes + self.seller_signature, private_key)
+        note = PromissoryNote.from_bytes(note_bytes)
+        note.buyer_signature = sign_DSS(
+            note.draft_bytes + note.seller_signature, private_key)
 
     def to_json(self):
         return {'Seller signature': str(self.seller_signature), 'Buyer Signature': str(self.buyer_signature)}
