@@ -11,6 +11,7 @@
 \usepackage{multicol}
 \usepackage{todonotes}
 \usepackage{tabularx}
+\usepackage{pdflscape}
 
 % Capitalize 'Section 1.1'.
 \renewcommand*{\sectionautorefname}{Section}
@@ -111,18 +112,46 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 	\begin{enumerate}
 		\item The seller drafts a proto--promissory note that consists of the first fields of a promissory note: the seller's public key, a unique identifier for the promissory note and the amount of money to transfer.
 		
+		\item The seller sends the draft to the buyer.
+		
 		\item The buyer either chooses to agree to the transaction or not. If the buyer does not want to or cannot agree to the transaction, the seller's proto--promissory note is discarded.
 		
-		\item If the buyer agrees to the transaction, then they attach one or more checks to the proto--promissory note and tags each check with a particular amount of money to transfer. This unsigned promissory note is sent back to the seller for signing.
+		\item If the buyer agrees to the transaction, then they attach one or more checks to the proto--promissory note and tags each check with a particular amount of money to transfer. 
 		
-		\item The seller sends the unsigned promissory note and sends the resulting partially-signed promissory note to the buyer.
+		\item This unsigned promissory note is sent back to the seller for signing.
 		
-		\item The buyer signs the partially-signed promissory note, turning it into a fully-signed promissory note, which is subsequently sent to the seller.
+		\item The seller signs the unsigned promissory note.
+		
+		\item The seller sends the resulting partially-signed promissory note to the buyer.
+		
+		\item The buyer signs the partially-signed promissory note, turning it into a fully-signed promissory note.
+		
+		\item This fully-signed promissory note is subsequently sent to the seller.
 	\end{enumerate}
 
 	After going through the motions described above, both the seller and the buyer can retain a copy of the fully-signed promissory note, which doubles as a receipt.
 	
 	Anything short of a fully-signed promissory note is null and void---the bank will not accept, e.g., an unsigned or partially-signed promissory note.
+	
+	\end{multicols}
+	\newpage
+    
+    \begin{landscape}
+    \thispagestyle{empty}
+    
+    	\begin{figure}
+        	\centering
+    	    \includegraphics[width=503pt]{img/signing_algorithm}
+            \caption{Signing Algorithm}
+            \label{fig:signing_algorithm}
+    	\end{figure}
+        
+        \vfill
+		\raisebox{1em}{\makebox[\linewidth]{\thepage}}
+    \end{landscape}
+	
+    \newpage
+	\begin{multicols}{2}
 	
 	\subsubsection{Well-formedness}
 
@@ -203,7 +232,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 		
 		\item \textbf{Signatures.} A signature is a special kind of length-prefixed string. The contents of a signature are obtained by first taking the SHA3-256 hash of the data to which the signature pertains and then applying the FIPS 186-4 (EC)DSA algorithm to that hash \cite{fips-202-sha3, fips-186-4-dss}.
 		
-		\item \textbf{Lists.} A list of items.
+		\item \textbf{Lists.} A list of items. This isn't actually a data type, but rather an indicator that a sequence of items is being encoded of a given type.
 		
 	\end{itemize}
 
@@ -242,7 +271,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 		\item[\texttt{value} (32-bit unsigned  integer)] The total amount of money transferred by the note.
 
-		\item[\texttt{checks} (list of Checks)] A list of Checks, each of which is encoded according to the previous subsection. 
+		\item[\texttt{checks} (list of Checks)] A list of Checks, each of which is encoded according to the previous subsection, the result of which is then again encoded as a length-prefixed string.
 
 		\item[\texttt{seller\_signature} (signature)] A signature of all aforementioned fields, signed by the seller device using its private key.
 		
