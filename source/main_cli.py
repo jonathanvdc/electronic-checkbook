@@ -252,7 +252,7 @@ class MainPrompt(Cmd):
         else:
             result = Account(owner)
 
-        owner.add_account(result, bank.id)
+        owner.add_account(result, bank.identifier)
         bank.add_account(result)
 
         return result

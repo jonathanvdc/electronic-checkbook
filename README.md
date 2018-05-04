@@ -1,4 +1,7 @@
 # electronic-checkbook
+
+[![Build Status](https://travis-ci.org/jonathanvdc/electronic-checkbook.svg?branch=master)](https://travis-ci.org/jonathanvdc/electronic-checkbook)
+
 Specification and reference implementation of a protocol for secure, real-time transactions.
 
 The highlights of this repository are
