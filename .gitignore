@@ -1,7 +1,10 @@
 # LaTeX cruft
 *.aux
+*.bbl
 *.log
+*.blg
 *.out
+*.synctex.gz
 *.pdf
 
 # Byte-compiled / optimized / DLL files

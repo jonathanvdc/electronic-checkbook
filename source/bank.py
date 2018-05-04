@@ -1,9 +1,8 @@
 """Implements the data store used by the bank."""
 
 import json
-from Crypto.PublicKey import ECC
 
-from account_holder_device import AccountHolderDevice
+from Crypto.PublicKey import ECC
 from promissory_note import Check
 from signing_protocol import known_banks
 from datetime import date
@@ -86,6 +85,18 @@ class AccountDeviceData(object):
         self.unspent_checks.add(check)
         return check
 
+    def to_json(self):
+        return {
+            'Public key': str(self.public_key),
+            'Check Counter': str(self.check_counter),
+            'cap': str(self.cap),
+            'Issued Check Value': str(self.issued_check_value),
+            'Unspent Checks': [check.to_json() for check in self.unspent_checks]
+        }
+
+    def __str__(self) -> str:
+        return json.dumps(self.to_json(), indent=2)
+
 
 class Account(object):
     """Describes an account at a bank."""
@@ -151,7 +162,7 @@ class Account(object):
         return {'Owner': self.owner, 'Max credit': self.max_credit, 'Balance': self.balance}
 
     def __str__(self) -> str:
-        return json.dumps(self.to_json(), indent=2)
+        return json.dumps(self.to_json(), indent=2, default=lambda x: x.to_json())
 
 
 class Bank(object):
@@ -172,11 +183,7 @@ class Bank(object):
         self.ahd_to_account = {}
         self.accounts = []
 
-    def register_account(self, account):
-        if not account.devices:
-            return
-        for device in account.devices.values():
-            self.ahd_to_account[device.public_key.export_key(format='PEM')] = account
+    def add_account(self, account):
         self.accounts.append(account)
 
     def add_device(self, account, device_public_key, cap=None):
@@ -329,4 +336,4 @@ class Bank(object):
         }
 
     def __str__(self) -> str:
-        return json.dumps(self.to_json(), indent=2)
+        return json.dumps(self.to_json(), indent=2, default=lambda x: x.to_json())

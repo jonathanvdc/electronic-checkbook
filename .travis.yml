@@ -1,0 +1,13 @@
+language: python
+python:
+  - "3.6"
+  - "3.6-dev"
+  - "3.7-dev"
+
+# Install dependencies.
+install:
+  - pip3 install pycryptodome
+
+# Run the tests.
+script:
+  - python3 source/unit_tests.py

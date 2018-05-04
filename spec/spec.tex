@@ -10,6 +10,7 @@
 \usepackage{a4wide}
 \usepackage{multicol}
 \usepackage{todonotes}
+\usepackage{tabularx}
 
 % Capitalize 'Section 1.1'.
 \renewcommand*{\sectionautorefname}{Section}
@@ -44,6 +45,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 	\begin{multicols}{2}
 
 	\section{Entities}
+	\label{sec:entities}
 	
 	This section details the information managed by the various entities in the payment system, as well as the entities themselves.
 	
@@ -89,9 +91,10 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 		\item a signature of all aforementioned fields by the buyer's private key. \todo{Which signature algorithm?}
 	\end{itemize}
 
-	A promissory note can be submitted to the bank, which will then wire the money from the buyer's account to the seller's. The creation and processing of promissory notes is described in more detail in the next section.
+	A promissory note can be submitted to the bank, which will then wire the money from the buyer's account to the seller's. The creation and processing of promissory notes is described in more detail in \autoref{sec:protocols}.
 
 	\section{Protocols}
+	\label{sec:protocols}
 	
 	This section describes the protocols used to exchange information between actors.
 	
@@ -131,7 +134,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 		\item the amount of money with which every check is tagged must not exceed the check's maximum value.
 	\end{itemize}
 
-	Additionally, each party should also make sure that the other party doesn't subtly change the promissory note halfway through the transaction. For example, the seller should check that the amount of money specified by the unsigned promissory note sent to them by the buyer matches the amount the seller originally specified.
+	Additionally, each party should also make sure that the other party doesn't (subtly or otherwise) change the promissory note halfway through the transaction. For example, the seller should check that the amount of money specified by the unsigned promissory note sent to them by the buyer matches the amount the seller originally specified.
 	
 	If the seller is online, then they must verify that the checks they receive have not been spent already. If they are offline, they cannot do so. See \autoref{sec:double-spending-checks} for a more thorough discussion of the double-spending problem.
 
@@ -179,8 +182,56 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 	The protocol via which the account holder requests their new batch of checks and the bank transfers the checks is left up to the bank to specify as it is does not touch on the interaction between account holders.
 	
-	\todo{design reference protocol}
+	\todo{design reference protocol?}
 	
+	\section{Encodings}
+	
+	The entities described in \autoref{sec:entities} abstractly describe the information required to successfully run the payment system's protocols.
+	
+	To ensure compatibility between different implementations of the payment system, this section describes a file format for checks and promissory notes.
+	
+	Compatibility is to be understood in a narrow sense here: the objective is to ensure that promissory notes can be agreed upon and signed by users of different implementations. The communications between account holders and their banks are implementation-defined.
+	
+	\subsection{Data types}
+	
+	The encodings for checks and promissory notes make use of the following data types:
+	
+	\begin{itemize}
+		\item \textbf{$k$-bit unsigned integers.} These are stored in little-endian byte order.
+		
+		\item \textbf{Length-prefixed strings.} A length-prefixed string consists of a 32-bit unsigned integer followed by $n$ bytes, where $n$ is the integer prefix.
+		
+		\item \textbf{Signatures.} A signature is a special kind of length-prefixed string. The contents of a signature are obtained by first taking the SHA3-256 hash of the data to which the signature pertains and then applying the FIPS 186-4 (EC)DSA algorithm to that hash \cite{fips-202-sha3, fips-186-4-dss}.
+
+	\end{itemize}
+
+	\subsection{Key types}
+
+	Using the (EC)DSA algorithm for signatures implies that, technically, any DSA or ECC key can be used.
+	
+	To ensure interoperability between implementations, all account holder devices must use ECC keys over the NIST P-256 curve.
+
+	The protocols and encodings used by the payment system are sufficiently flexible to accommodate other types of keys should they become desirable in the future.
+
+	\subsection{Checks}
+	
+	When transferred during the promissory note signing process, a check is encoded as a concatenation of the following fields:
+	
+	\begin{description}
+		\item[\textbf{\texttt{bank\_id}} (32-bit unsigned integer)] A unique identifier for the bank that issued the check.
+
+		\item[\texttt{owner\_public\_key} (length-prefixed string)] The public key of the account holder device for which the check was issued, encoded as a UTF-8 string in the PEM format \cite{rfc-pem}.
+
+		\item[\texttt{value} (32-bit unsigned  integer)] The maximum amount of money the check can be used for.
+
+		\item[\texttt{identifier} (64-bit unsigned integer)] An identifier that uniquely identifies this check among all of the checks assigned to the account holder device.
+
+		\item[\texttt{signature} (signature)] A signature of all aforementioned fields.
+	\end{description}
+
+	\subsection{Promissory notes}
+ 
+
 	\section{Online and offline behavior}
 
 	The core signing algorithm is the same for both online and offline transactions, but what happens afterward differs slightly for sellers.
@@ -277,6 +328,9 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 	\end{itemize}
 
 	To summarize, there are no fortunes to be made here and the attacker will likely get arrested quickly. It is far more profitable to just rob a store outright. Coincidentally, that also takes less skill, time and investment on the attacker's part.
+	
+	\bibliographystyle{acm}
+	\bibliography{spec} 
 	
 	\end{multicols}
 
