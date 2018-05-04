@@ -203,7 +203,15 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 		
 		\item \textbf{Signatures.} A signature is a special kind of length-prefixed string. The contents of a signature are obtained by first taking the SHA3-256 hash of the data to which the signature pertains and then applying the FIPS 186-4 (EC)DSA algorithm to that hash \cite{fips-202-sha3, fips-186-4-dss}.
 
-	\end{itemize}	
+	\end{itemize}
+
+	\subsection{Key types}
+
+	Using the (EC)DSA algorithm for signatures implies that, technically, any DSA or ECC key can be used.
+	
+	To ensure interoperability between implementations, all account holder devices must use ECC keys over the NIST P-256 curve.
+
+	The protocols and encodings used by the payment system are sufficiently flexible to accommodate other types of keys should they become desirable in the future.
 
 	\subsection{Checks}
 	
@@ -222,10 +230,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 	\end{description}
 
 	\subsection{Promissory notes}
-
-	
-
-	\subsection{Key types}
+ 
 
 	\section{Online and offline behavior}
 
