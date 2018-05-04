@@ -50,10 +50,13 @@ class TestSerializable(unittest.TestCase):
         device = AccountHolderDevice()
         data = AccountDeviceData(device.public_key, 1000)
         random.seed(None)
-        check = data.generate_check(random.randint(1, 10), bank)
+        val = random.randint(1, 10)
+        check = data.generate_check(val, bank)
         serialized = check.to_bytes()
         deserialized = Check.from_bytes(serialized)
         assert deserialized.to_bytes() == serialized
+        assert deserialized.bank_id == 42
+        assert deserialized.value == val
 
     def test_serialize_promissory_note_draft(self):
         """Tests that a promissory note draft can be serialized."""
