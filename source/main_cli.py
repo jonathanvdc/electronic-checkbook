@@ -148,7 +148,8 @@ class MainPrompt(Cmd):
                 table = list(map(lambda x: [x], self.promissory_notes))
             elif param == "people":
                 table = list(map(lambda x: [x], self.people))
-
+            else:
+                raise KeyError
             table.insert(0, ["#", param])
 
             print(tabulate(table, headers="firstrow", showindex=True) + "\n")  # tablefmt="grid"
