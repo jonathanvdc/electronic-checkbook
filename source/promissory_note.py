@@ -141,10 +141,6 @@ class Check(Serializable):
         self.identifier = state['identifier']
         self.signature = state['signature']
 
-    def __get_unsigned_version(self):
-        return Check(self.bank_id, self.owner_public_key, self.value,
-                     self.identifier, b'')
-
     def __get_unsigned_bytes(self):
         return uint32_to_bytes(self.bank_id) + \
             string_to_bytes(self.owner_public_key.export_key(format='PEM')) + \
@@ -153,7 +149,8 @@ class Check(Serializable):
 
     def to_bytes(self):
         """Produces a byte string that represents this check."""
-        return self.__get_unsigned_bytes() + bytestring_to_bytes(self.signature)
+        return self.__get_unsigned_bytes() + bytestring_to_bytes(
+            self.signature)
 
     @staticmethod
     def from_bytes(check_bytes):
@@ -163,12 +160,9 @@ class Check(Serializable):
         value, check_bytes = uint32_from_bytes(check_bytes)
         identifier, check_bytes = uint64_from_bytes(check_bytes)
         signature, check_bytes = bytestring_from_bytes(check_bytes)
-        return Check(
-            bank_id,
-            ECC.import_key(owner_public_key),
-            value,
-            identifier,
-            signature)
+        return Check(bank_id,
+                     ECC.import_key(owner_public_key), value, identifier,
+                     signature)
 
     @property
     def is_signature_authentic(self, bank_public_key):
