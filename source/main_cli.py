@@ -273,6 +273,7 @@ class MainPrompt(Cmd):
                 self._get_choice_("account", bank.accounts, "For which account is this ahd?", [bank])
 
         result = AccountHolderDevice()
+        result.register_bank(bank.identifier, bank.public_key)
 
         limit = input("what is the spending limit for this ahd?")
         if limit:
