@@ -23,19 +23,16 @@ class Person(JSONEncoder):
     def __init__(self, name):
         super().__init__()
         self.name = name
-        self._ahds_ = {}
+        self._account_to_ahds_ = defaultdict(list)
         self._bank_to_accounts_ = defaultdict(set)
 
     # setters
     def add_account(self, account, bank_id):
         self._bank_to_accounts_[bank_id].add(account)
+        self._account_to_ahds_[account] = []
 
-    def add_ahd(self, ahd):
-        self._ahds_[ahd.public_key.export_key(format='PEM')] = ahd
-
-    # getters
-    def get_ahd(self, public_key):
-        return self._ahds_[public_key]
+    def add_ahd(self, account, ahd):
+        self._account_to_ahds_[account].append(ahd)
 
     def get_accounts(self, bank_id=None):
         if bank_id:
@@ -43,10 +40,10 @@ class Person(JSONEncoder):
         return self._bank_to_accounts_.values()
 
     def ahds(self):
-        return self._ahds_.values()
+        return [ahd for account in self._account_to_ahds_ for ahd in self._account_to_ahds_[account]]
 
     def accounts(self):
-        return self._bank_to_accounts_.values()
+        return list(self._account_to_ahds_.keys())
 
     def to_json(self):
         return {'Name': self.name}
@@ -284,14 +281,14 @@ class MainPrompt(Cmd):
         else:
             bank.add_device(account, result.public_key)
 
-        account.owner.add_ahd(result)
+        account.owner.add_ahd(account, result)
         return result
 
     def create_check(self):
         bank = \
             self._get_choice_("bank", known_banks(), "Which bank should issue the check?")
         device = \
-            self._get_choice_("ahd", self.ahds(), "For which account holder device?")
+            self._get_choice_("ahd", [ahd for account in bank.accounts for ahd in account.owner.ahds()], "For which account holder device?")
         amount = int(input("What amount?"))
 
         try:

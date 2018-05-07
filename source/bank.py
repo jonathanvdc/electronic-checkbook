@@ -120,7 +120,7 @@ class Account(object):
         self.devices[ahd.public_key.export_key(format='PEM')] = ahd
 
     def to_json(self):
-        return {'Owner': self.owner, 'Max credit': self.max_credit, 'Balance': self.balance}
+        return {'Owner': self.owner, 'Max credit': self.max_credit, 'Balance': self.balance, 'AHDs': list(self.devices.values())}
 
     def __str__(self) -> str:
         return json.dumps(self.to_json(), indent=2, default=lambda x: x.to_json())
@@ -152,8 +152,10 @@ class Bank(object):
            identified by a public key. Returns the data for the device."""
         if cap is None:
             cap = self.default_cap
+
         exported_key = device_public_key.export_key(format='PEM')
         self.ahd_to_account[exported_key] = account
+
         device_data = AccountDeviceData(device_public_key, cap)
         account.devices[exported_key] = device_data
         return device_data
