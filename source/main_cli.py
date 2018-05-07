@@ -11,7 +11,7 @@ from tabulate import tabulate
 from account_holder_device import AccountHolderDevice
 from bank import Bank, Account
 from signing_protocol import register_bank, create_promissory_note, verify_promissory_note, transfer, \
-    perform_transaction, known_banks
+    perform_transaction, known_banks, OfflineException
 
 
 class CreationException(Exception):
@@ -173,15 +173,16 @@ class MainPrompt(Cmd):
         amount = int(input("What amount? "))
 
         try:
-            perform_transaction(buyer_device, seller_device, amount, seller_device.internet_connection)
+            perform_transaction(buyer_device, seller_device, amount)
+        except OfflineException:
+            print("Promissory note was created, but not yet redeemed as no internet connection was available.\n" +
+                  "Please connect to the internet and redeem the promissory note.\n")
+            return
         except ValueError as e:
             print("*** " + str(e))
             return
 
         print("Transaction was successful.\n")
-        if not seller_device.internet_connection:
-            print("Promissory note not yet redeemed as no internet connection was available.\n" +
-                  "Please connect to the internet and redeem the promissory note.\n")
 
     def do_transfer(self, args):
         """Transfer a promissory note from a buyer device to the banks.
@@ -363,7 +364,7 @@ class MainPrompt(Cmd):
                 if not val:
                     return None
                 return int(val)
-        except Exception:
+        except ValueError:
             return self._parse_int_(question, value_required)
 
     def onecmd(self, args):
