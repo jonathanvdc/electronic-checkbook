@@ -172,8 +172,11 @@ class MainPrompt(Cmd):
             self._get_choice_("ahd", self.ahds(), "Which account holder device is the buyer?")
         amount = int(input("What amount? "))
 
-        perform_transaction(buyer_device, seller_device, amount)
+        perform_transaction(buyer_device, seller_device, amount, seller_device.internet_connection)
         print("Transaction was successful.\n")
+        if not seller_device.internet_connection:
+            print("Promissory note not yet redeemed as no internet connection was available.\n" +
+                  "Please connect to the internet and redeem the promissory note.\n")
 
     def do_transfer(self, args):
         """Transfer a promissory note from a buyer device to the banks.

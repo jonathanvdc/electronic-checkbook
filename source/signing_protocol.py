@@ -58,10 +58,11 @@ def transfer(promissory_note, buyer_device):
         bank.redeem_promissory_note(promissory_note)
 
 
-def perform_transaction(buyer_device, seller_device, amount):
+def perform_transaction(buyer_device, seller_device, amount, internet_connection=True):
     """Transfers a particular amount of money from one account holder
        (the "buyer") to another (the "seller")."""
     # Create and sign a note.
     note = create_promissory_note(buyer_device, seller_device, amount)
     verify_promissory_note(note)
-    transfer(note, buyer_device)
+    if internet_connection:
+        transfer(note, buyer_device)
