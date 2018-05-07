@@ -172,7 +172,12 @@ class MainPrompt(Cmd):
             self._get_choice_("ahd", self.ahds(), "Which account holder device is the buyer?")
         amount = int(input("What amount? "))
 
-        perform_transaction(buyer_device, seller_device, amount, seller_device.internet_connection)
+        try:
+            perform_transaction(buyer_device, seller_device, amount, seller_device.internet_connection)
+        except ValueError as e:
+            print("*** " + str(e))
+            return
+
         print("Transaction was successful.\n")
         if not seller_device.internet_connection:
             print("Promissory note not yet redeemed as no internet connection was available.\n" +
@@ -256,7 +261,8 @@ class MainPrompt(Cmd):
                 self._get_choice_("bank", known_banks(), "Under which bank will this account be registered?")
         owner = \
             self._get_choice_("person", self.people, "For which person is this account?")
-        max_credit = input("Max credit for account? (leave blank for default) ")
+
+        max_credit = self._parse_int_("Max credit for account? (leave blank for default)")
         if max_credit:
             result = Account(owner, int(max_credit))
         else:
@@ -278,9 +284,8 @@ class MainPrompt(Cmd):
         result = AccountHolderDevice()
         result.register_bank(bank.identifier, bank.public_key)
 
-        limit = input("what is the spending limit for this ahd?")
+        limit = self._parse_int_("what is the spending limit for this ahd?")
         if limit:
-            limit = int(limit)
             bank.add_device(account, result.public_key, cap=limit)
         else:
             bank.add_device(account, result.public_key)
@@ -293,7 +298,7 @@ class MainPrompt(Cmd):
             self._get_choice_("bank", known_banks(), "Which bank should issue the check?")
         device = \
             self._get_choice_("ahd", [ahd for account in bank.accounts for ahd in account.owner.ahds()], "For which account holder device?")
-        amount = int(input("What amount?"))
+        amount = self._parse_int_("What amount?", True)
 
         try:
             result = bank.issue_check(device.public_key, amount)
@@ -310,7 +315,7 @@ class MainPrompt(Cmd):
         buyer_device = \
             self._get_choice_("ahd", self.ahds(), "Which account holder device is the buyer?")
 
-        amount = int(input("What amount? "))
+        amount = self._parse_int_("What amount?", True)
 
         # TODO: maybe split this process (especially signing protocol) for demonstration purposes
         try:
@@ -348,6 +353,18 @@ class MainPrompt(Cmd):
       \___/  |_|  |_||_||___||_|_
 
     """
+
+    def _parse_int_(self, question, value_required=False):
+        try:
+            if value_required:
+                return int(input(question + " "))
+            else:
+                val = input(question + " ")
+                if not val:
+                    return None
+                return int(val)
+        except Exception:
+            return self._parse_int_(question, value_required)
 
     def onecmd(self, args):
         try:
