@@ -226,13 +226,13 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 	The encodings for checks and promissory notes make use of the following data types:
 	
 	\begin{itemize}
-		\item \textbf{$k$-bit unsigned integers.} These are stored in little-endian byte order.
+		\item \textbf{$k$-bit integers.} These are stored in little-endian byte order. Unless explicitly stated otherwise, all integers in this section are unsigned.
 		
 		\item \textbf{Length-prefixed strings.} A length-prefixed string consists of a 32-bit unsigned integer followed by $n$ bytes, where $n$ is the integer prefix.
 		
 		\item \textbf{Signatures.} A signature is a special kind of length-prefixed string. The contents of a signature are obtained by first taking the SHA3-256 hash of the data to which the signature pertains and then applying the FIPS 186-4 (EC)DSA algorithm to that hash \cite{fips-202-sha3, fips-186-4-dss}.
 		
-		\item \textbf{Lists.} A list of items. This isn't actually a data type, but rather an indicator that a sequence of items is being encoded of a given type.
+		\item \textbf{Lists.} A list of items, encoded separately and placed back-to-back.
 		
 	\end{itemize}
 
@@ -249,13 +249,13 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 	When transferred during the promissory note signing process, a check is encoded as a concatenation of the following fields:
 	
 	\begin{description}
-		\item[\textbf{\texttt{bank\_id}} (32-bit unsigned integer)] A unique identifier for the bank that issued the check.
+		\item[\textbf{\texttt{bank\_id}} (32-bit integer)] A unique identifier for the bank that issued the check.
 
 		\item[\texttt{owner\_public\_key} (length-prefixed string)] The public key of the account holder device for which the check was issued, encoded as a UTF-8 string in the PEM format \cite{rfc-pem}.
 
-		\item[\texttt{value} (32-bit unsigned  integer)] The maximum amount of money the check can be used for.
+		\item[\texttt{value} (32-bit  integer)] The maximum amount of money the check can be used for.
 
-		\item[\texttt{identifier} (64-bit unsigned integer)] An identifier that uniquely identifies this check among all of the checks assigned to the account holder device.
+		\item[\texttt{identifier} (64-bit integer)] An identifier that uniquely identifies this check among all of the checks assigned to the account holder device.
 
 		\item[\texttt{signature} (signature)] A signature of all aforementioned fields.
 	\end{description}
@@ -265,13 +265,15 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
  The actual promissory notes, which are encoded and decoded on multiple occasions during the signing process, can be subdivided in two categories: the draft and the actual promissory note. However, as the draft is actually a nascent promissory note, this subdivision is in fact artificial. A promissory note is therefore encoded as a concatenation of the following fields:
  
 	 \begin{description}
+	 	\item[\textbf{\texttt{draft\_size} (32-bit integer)}] The size of the promissory note's draft section, in bytes. The draft section consists of fields \texttt{seller\_public\_key}, \texttt{identifier}, \texttt{value} and \texttt{checks}.
+	 	
 		\item[\textbf{\texttt{seller\_public\_key}} (length-prefixed string)]  The public key of the account holder device of the seller, encoded as a UTF-8 string in the PEM format \cite{rfc-pem}.
 
-		\item[\texttt{identifier} (64-bit unsigned integer)] An identifier that uniquely defines the promissory note.
+		\item[\texttt{identifier} (64-bit integer)] An identifier that uniquely defines the promissory note.
 
-		\item[\texttt{value} (32-bit unsigned  integer)] The total amount of money transferred by the note.
+		\item[\texttt{value} (32-bit integer)] The total amount of money transferred by the note.
 
-		\item[\texttt{checks} (list of Checks)] A list of Checks, each of which is encoded according to the previous subsection, the result of which is then again encoded as a length-prefixed string.
+		\item[\texttt{checks} (list of check, 32-bit integer pairs)] A list of pairs. Each pair consists of a length-prefixed encoded check---as always, the length prefix is a 32-bit integer---followed by a 32-bit integer that specifies the amount of money to spend using the aforementioned check.
 
 		\item[\texttt{seller\_signature} (signature)] A signature of all aforementioned fields, signed by the seller device using its private key.
 		
