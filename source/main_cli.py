@@ -339,7 +339,7 @@ class MainPrompt(Cmd):
         # TODO: maybe split this process (especially signing protocol) for demonstration purposes
         try:
             result = create_promissory_note(buyer_device, seller_device, amount)
-            self.promissory_notes.append(result)
+            self.promissory_notes[result] = (seller_device, buyer_device)
             return result
         except ValueError as e:
             print("*** " + str(e))
