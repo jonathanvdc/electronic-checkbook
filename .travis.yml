@@ -6,7 +6,7 @@ python:
 
 # Install dependencies.
 install:
-  - pip3 install pycryptodome
+  - pip3 install pycryptodome tabulate
 
 # Run the tests.
 script:
