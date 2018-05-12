@@ -65,6 +65,8 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 		\item a number of unspent checks, the \emph{checkbook} (stored on the device).
 	\end{itemize}
 
+	It is worth clarifying that an account holder device is a \emph{logical} device that may, but does not have to, correspond to a physical device. For example, a phone that is authorized for $n$ different accounts acts as $n$ different account holder devices.
+
 	\paragraph{Checks}
 	
 	Every check is unique and each check specifies
@@ -167,7 +169,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 	
 	If the seller is online, then they must verify that the checks they receive have not been spent already. If they are offline, they cannot do so. See \autoref{sec:double-spending-checks} for a more thorough discussion of the double-spending problem.
 
-	\subsubsection{Security requirements}
+	\subsubsection{Goals and security requirements}
 
 	The promissory note signing algorithm achieves a number of security requirements.
 	
@@ -191,7 +193,21 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 	If the buyer can connect to their bank, then they can ask their bank if the seller is indeed an account holder, that is, they can verify the origin of the partially-signed promissory note before signing it themselves.
 	
-	If the buyer is offline, then they cannot verify the seller's authenticity. This lack of seller authentication is fairly harmless because a promissory note signed by a seller who is not also an account holder cannot be redeemed by the seller. See \autoref{sec:lack-of-seller-authentication} for a more thorough discussion of the consequences of buyers' inability to authenticate sellers when they are offline.
+	If the buyer is offline, then they cannot verify the seller's authenticity. This lack of seller authentication is fairly harmless because a promissory note signed by a seller who is not also an account holder cannot be redeemed by the seller. This point is reiterated in \autoref{sec:lack-of-seller-authentication}.
+
+	\subsubsection{Non-goals}
+
+	The protocol described in this document aims to accomplish the goals stated in the previous section, but it consciously does not try to conform to the requirements listed in this section.
+
+	The non-goals listed here are not considered entirely irrelevant to electronic payments. Rather, they are considered to be out of scope because a real-life implementation of the payment system is not intended to exist in isolation: there are already battle-tested solutions for the security requirements listed here and the payment system is envisioned to coexist with them instead of supplanting them.
+
+	\paragraph{Data confidentiality}
+
+	It is arguably desirable to prevent others from eavesdropping on a payment. The protocol described in this section does not address this directly. Confidentiality can be accomplished by running the protocol set out here over a secure channel, e.g., over TLS.
+
+	\paragraph{Availability}
+
+	After signing a promissory note, the seller should be able to submit the fully signed promissory note to the bank. Hence, one might argue that the bank's servers should be available whenever the seller has an Internet connection. However, the protocol with which an account holder communicates with their bank is left to the bank to specify, so any availability requirements it raises are out of scope.
 
 	\subsection{Redeeming a promissory note}
 
@@ -201,7 +217,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 	It may be desirable to transfer promissory notes over a secure connection to prevent eavesdropping, but that is not necessary to make the payment system work. The signatures on a promissory note ensure that the note cannot be tampered with.
 	
-	\todo{design reference protocol}
+	\todo{design reference protocol?}
 
 	\subsection{Transferring checks}
 
@@ -273,7 +289,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 		\item[\texttt{value} (32-bit integer)] The total amount of money transferred by the note.
 
-		\item[\texttt{checks} (list of check, 32-bit integer pairs)] A list of pairs. Each pair consists of a length-prefixed encoded check---as always, the length prefix is a 32-bit integer---followed by a 32-bit integer that specifies the amount of money to spend using the aforementioned check.
+		\item[\texttt{checks} (list of check--32-bit integer pairs)] A list of pairs. Each pair consists of a length-prefixed encoded check---as always, the length prefix is a 32-bit integer---followed by a 32-bit integer that specifies the amount of money to spend using the aforementioned check.
 
 		\item[\texttt{seller\_signature} (signature)] A signature of all aforementioned fields, signed by the seller device using its private key.
 		
