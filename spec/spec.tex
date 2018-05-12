@@ -261,6 +261,8 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 		
 		\item \textbf{Lists.} A list of items, encoded separately and placed back-to-back.
 		
+		\item \textbf{Date.} A date represented as a string with \text{ddmmYYYY} format.
+		
 	\end{itemize}
 
 	\subsection{Key types}
@@ -283,6 +285,8 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 		\item[\texttt{value} (32-bit  integer)] The maximum amount of money the check can be used for.
 
 		\item[\texttt{identifier} (64-bit integer)] An identifier that uniquely identifies this check among all of the checks assigned to the account holder device.
+		
+		\item[\texttt{expiration\_date} (date)] The expiration date of the check.
 
 		\item[\texttt{signature} (signature)] A signature of all aforementioned fields.
 	\end{description}
@@ -299,6 +303,8 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 		\item[\texttt{identifier} (64-bit integer)] An identifier that uniquely defines the promissory note.
 
 		\item[\texttt{value} (32-bit integer)] The total amount of money transferred by the note.
+		
+		\item[\texttt{transaction\_date} (date)] The date on which the note was drafted.
 
 		\item[\texttt{checks} (list of check--32-bit integer pairs)] A list of pairs. Each pair consists of a length-prefixed encoded check---as always, the length prefix is a 32-bit integer---followed by a 32-bit integer that specifies the amount of money to spend using the aforementioned check.
 
