@@ -192,7 +192,7 @@ class Bank(object):
         if cap is None:
             cap = self.default_cap
         if monthly_cap is None:
-            monthly_cap = self.default_cap
+            monthly_cap = cap
 
         exported_key = device_public_key.export_key(format='PEM')
         self.ahd_to_account[exported_key] = account
