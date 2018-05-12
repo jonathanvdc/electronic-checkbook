@@ -77,6 +77,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 		\item the check's value, that is, the maximum amount of money the check can be used for, \todo{include time stamps to indicate when check is valid}
 		\item a number that uniquely identifies the check within the space of all checks issued for the device---this can be a sequence number or a random number---and
 		\item a signature of the above produced by the private key of the bank that issued the check. \todo{Which signature algorithm?}
+		\item an expiration date. Expired checks can no longer be used to make promissory notes.
 	\end{itemize}
 
 	The number of checks is such that the total value of all checks on an account holder's device never exceeds the spending cap for that device.
@@ -92,6 +93,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 		\item a list of checks and the amount of money each check transfers (the total amount transferred by the checks equals the sum value on the promissory note),
 		\item a signature of all aforementioned fields by the seller's private key, \todo{Which signature algorithm?} and
 		\item a signature of all aforementioned fields by the buyer's private key. \todo{Which signature algorithm?}
+		\item a time-stamp of the date on which the transaction between buyer and seller was made. Promissory notes can only be claimed by the seller up to X days after the transaction date and checks can still be redeemed up to X days after they expired.
 	\end{itemize}
 
 	A promissory note can be submitted to the bank, which will then wire the money from the buyer's account to the seller's. The creation and processing of promissory notes is described in more detail in \autoref{sec:protocols}.
@@ -103,7 +105,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 	
 	\subsection{Signing a promissory note}
 
-	A promissory note is an agreement between two parties---a buyer and a seller---to transfer a particular amount of money from the buyer's account to the seller's. Promissory notes are redeemed by the seller when they can connect to their bank. From the buyer's perspective, signing a promissory note is the same as handing over cash to the seller.
+	A promissory note is an agreement between two parties---a buyer and a seller---to transfer a particular amount of money from the buyer's account to the seller's. Promissory notes are redeemed by the seller when they can connect to their bank. From the buyer's perspective, signing a promissory note is the same as handing over cash to the seller. 
 	
 	This section describes the protocol for creating promissory notes.
 
@@ -131,7 +133,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 		\item This fully-signed promissory note is subsequently sent to the seller.
 	\end{enumerate}
 
-	After going through the motions described above, both the seller and the buyer can retain a copy of the fully-signed promissory note, which doubles as a receipt.
+	After going through the motions described above, both the seller and the buyer retain a copy of the fully-signed promissory note, which doubles as a receipt.
 	
 	Anything short of a fully-signed promissory note is null and void---the bank will not accept, e.g., an unsigned or partially-signed promissory note.
 	
@@ -163,9 +165,10 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 		\item all signatures must be verified against their public keys by each party,
 		\item the sum of the amounts of money specified by the checks must match the total amount on the promissory note, and
 		\item the amount of money with which every check is tagged must not exceed the check's maximum value.
+		\item the note should not contain checks that expired before the transaction date time-stamp.
 	\end{itemize}
 
-	Additionally, each party should also make sure that the other party doesn't (subtly or otherwise) change the promissory note halfway through the transaction. For example, the seller should check that the amount of money specified by the unsigned promissory note sent to them by the buyer matches the amount the seller originally specified.
+	Additionally, each party should also make sure that the other party doesn't (subtly or otherwise) change the promissory note halfway through the transaction. For example, the seller should check that the amount of money specified by the unsigned promissory note sent to them by the buyer matches the amount the seller originally specified. It is also important for both parties to confirm the correctness of the time-stamp, as an incorrect time-stamp can result in the note being unredeemable by the seller (note expired before it can even be sent to the bank), or the note being redeemable beyond the intended expiration date.
 	
 	If the seller is online, then they must verify that the checks they receive have not been spent already. If they are offline, they cannot do so. See \autoref{sec:double-spending-checks} for a more thorough discussion of the double-spending problem.
 
@@ -209,13 +212,21 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 	After signing a promissory note, the seller should be able to submit the fully signed promissory note to the bank. Hence, one might argue that the bank's servers should be available whenever the seller has an Internet connection. However, the protocol with which an account holder communicates with their bank is left to the bank to specify, so any availability requirements it raises are out of scope.
 
-	\subsection{Redeeming a promissory note}
+	\subsection{Redeeming a promissory note as the seller}
 
-	To redeem a promissory note, the seller sends it to their bank. The bank verifies the promissory note's authenticity and transfers the amount specified by the promissory note from the buyer's account to the seller's \emph{if this is the first time that the promissory note is redeemed.} Trying to redeem the same promissory note twice does nothing. \todo{check note timestamp, debt gone if unclaimed}
+	To redeem a promissory note, the seller sends it to their bank. The bank verifies the promissory note's authenticity and transfers the amount specified by the promissory note from the buyer's account to the seller's \emph{if this is the first time that the promissory note is redeemed.} Trying to redeem the same promissory note twice does nothing. Furthermore, the promissory notes are no longer valid X days after the included time-stamp. If a seller tries to redeem the note in this scenario, the debt is instead cleared from the buyer's account and, if applicable\footnote{See, Redeeming a promissory note as the buyer}, the buyer's monthly cap is restored to reflect the transaction now being declared void.
 
 	The exact protocol used by the seller and the bank to redeem promissory notes is up to the bank to specify or implement. Similarly, the protocol used by banks to negotiate a wire transfer is not specified here either.
 
 	It may be desirable to transfer promissory notes over a secure connection to prevent eavesdropping, but that is not necessary to make the payment system work. The signatures on a promissory note ensure that the note cannot be tampered with.
+	
+	\subsection{Redeeming a promissory note as the buyer}
+	
+	Buyers should be able to pass their fully signed promissory notes to their bank to confirm their successful transactions with the bank. This allows the bank to update the client's unspent checks and monthly spending cap in advance of the sellers redeeming the respective notes so that the client can request new checks with his bank. Without this option, if a buyer uses for example a 500\$ check for a 10\$ transaction, the buyer will be locked out of 490\$ he can't spend until the seller redeems the promissory note with the bank.
+	
+	Additionally, checks have an expiration date that is tracked by the bank in case a seller never claims a promissory note and the buyer loses his copy of that same note. This extra measure prevents a buyer from being permanently locked out of spending parts of his money.
+	
+	A buyer passing a note to his bank should not necessarily trigger an actual money transfer as the burden of redeeming the note lies with the seller.
 	
 	\todo{design reference protocol?}
 

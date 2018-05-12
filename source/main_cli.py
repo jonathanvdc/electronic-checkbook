@@ -10,8 +10,9 @@ from tabulate import tabulate
 
 from account_holder_device import AccountHolderDevice
 from bank import Bank, Account
+from promissory_note import PromissoryNote
 from signing_protocol import register_bank, create_promissory_note, verify_promissory_note, transfer, \
-    perform_transaction, known_banks, OfflineException
+    known_banks, OfflineException
 
 
 class CreationException(Exception):
@@ -58,7 +59,7 @@ class MainPrompt(Cmd):
         super().__init__()
         self.prompt = 'SimPay $ '
 
-        self.promissory_notes = []
+        self.promissory_notes = {}
         self.people = []
 
         # start the prompt
@@ -174,16 +175,34 @@ class MainPrompt(Cmd):
         amount = int(input("What amount? "))
 
         try:
-            perform_transaction(buyer_device, seller_device, amount)
+            draft = seller_device.draft_promissory_note(amount)
+            print("PROMISSORY NOTE DRAFT CREATION SUCCESSFUL:\n{}\n".format(draft))
+
+            # Have the buyer attach checks to it.
+            buyer_device.add_payment(draft)
+            print("CHECKS SUCCESSFULLY ADDED:\n{}\n".format(draft))
+
+            # Sign it
+            note = PromissoryNote(draft.to_bytes())
+            note = PromissoryNote.from_bytes(PromissoryNote.sign_seller(note.to_bytes(), seller_device.private_key))
+            print("UNSIGNED PROMISSORY NOTE SUCCESSFULLY SIGNED BY SELLER:\n{}\n".format(note))
+            note = PromissoryNote.from_bytes(PromissoryNote.sign_buyer(note.to_bytes(), buyer_device.private_key))
+            print("PARTIALLY-SIGNED PROMISSORY NOTE SUCCESSFULLY SIGNED BY BUYER:\n{}\n".format(note))
+
+            verify_promissory_note(note)
+            print("PROMISSORY NOTE SUCCESSFULLY VERIFIED\n")
+
+            self.promissory_notes[note] = (seller_device, buyer_device)
+
+            transfer(note, buyer_device, seller_device)
+            print("TRANSFER SUCCESSFUL\n")
         except OfflineException:
             print("Promissory note was created, but not yet redeemed as no internet connection was available.\n" +
                   "Please connect to the internet and redeem the promissory note.\n")
             return
-        except ValueError as e:
+        except Exception as e:
             print("*** " + str(e))
             return
-
-        print("Transaction was successful.\n")
 
     def do_transfer(self, args):
         """Transfer a promissory note from a buyer device to the banks.
@@ -191,17 +210,18 @@ class MainPrompt(Cmd):
         Usage: transfer
         """
         try:
-            buyer_device = \
-                self._get_choice_("ahd", self.ahds(), "Which account holder device is the buyer?")
-
             pn = \
-                self._get_choice_("pn", self.promissory_notes, "Which promissory note needs to be redeemed?")
-            transfer(pn, buyer_device)
-        except CreationException as e:
+                self._get_choice_("pn", list(self.promissory_notes.keys()),
+                                  "Which promissory note needs to be redeemed?")
+            transfer(pn, self.promissory_notes[pn][1], self.promissory_notes[pn][0])
+            print("TRANSFER SUCCESSFUL\n")
+        except OfflineException:
+            print("Promissory note was created, but not yet redeemed as no internet connection was available.\n" +
+                  "Please connect to the internet and redeem the promissory note.\n")
+            return
+        except Exception as e:
             print("*** " + str(e))
             return
-
-        print("Transfer was successful.\n")
 
     def do_verify(self, args):
         """Perform verification process on a promissory note.
@@ -214,7 +234,7 @@ class MainPrompt(Cmd):
 
         try:
             verify_promissory_note(pn)
-        except ValueError as e:
+        except Exception as e:
             print("*** " + str(e))
             return
 
@@ -253,7 +273,8 @@ class MainPrompt(Cmd):
         return result
 
     def create_person(self):
-        person = Person(input("Which name does this person have? "))
+        name = self._parse_type_("What is the name of this person?", str, lambda s: not any(c.isdigit() for c in s), value_required=True)
+        person = Person(name)
         self.people.append(person)
         return person
 
@@ -264,7 +285,7 @@ class MainPrompt(Cmd):
         owner = \
             self._get_choice_("person", self.people, "For which person is this account?")
 
-        max_credit = self._parse_int_("Max credit for account? (leave blank for default)")
+        max_credit = self._parse_type_("Max credit for account? (leave blank for default)", int, lambda x: x > 0 or not x)
         if max_credit:
             result = Account(owner, int(max_credit))
         else:
@@ -286,7 +307,7 @@ class MainPrompt(Cmd):
         result = AccountHolderDevice()
         result.register_bank(bank.identifier, bank.public_key)
 
-        limit = self._parse_int_("what is the spending limit for this ahd?")
+        limit = self._parse_type_("what is the spending limit for this ahd?", int)
         if limit:
             _, cert = bank.add_device(account, result.public_key, cap=limit)
         else:
@@ -299,13 +320,15 @@ class MainPrompt(Cmd):
         bank = \
             self._get_choice_("bank", known_banks(), "Which bank should issue the check?")
         device = \
-            self._get_choice_("ahd", [ahd for account in bank.accounts for ahd in account.owner.ahds()], "For which account holder device?")
-        amount = self._parse_int_("What amount?", True)
+            self._get_choice_("ahd", [ahd for account in bank.accounts for ahd in account.owner.ahds()],
+                              "For which account holder device?")
+
+        amount = self._parse_type_("What amount?", int, lambda x: x > 0, value_required=True)
 
         try:
             result = bank.issue_check(device.public_key, amount)
             device.add_unspent_check(result)
-        except ValueError as e:
+        except Exception as e:
             print("*** " + str(e))
             return
 
@@ -325,14 +348,14 @@ class MainPrompt(Cmd):
         answer = input("Do you want to continue? (y/n)")
         if answer != "y":
             raise ValueError("Aborted")
-        amount = self._parse_int_("What amount?", True)
+        amount = self._parse_type_("What amount?", int, lambda x: x > 0, value_required=True)
 
         # TODO: maybe split this process (especially signing protocol) for demonstration purposes
         try:
             result = create_promissory_note(buyer_device, seller_device, amount)
-            self.promissory_notes.append(result)
+            self.promissory_notes[result] = (seller_device, buyer_device)
             return result
-        except ValueError as e:
+        except Exception as e:
             print("*** " + str(e))
             raise CreationException("Could not create promissory note")
 
@@ -364,17 +387,17 @@ class MainPrompt(Cmd):
 
     """
 
-    def _parse_int_(self, question, value_required=False):
+    def _parse_type_(self, question, cast_type, condition=lambda _: True, value_required=False):
         try:
-            if value_required:
-                return int(input(question + " "))
-            else:
-                val = input(question + " ")
-                if not val:
-                    return None
-                return int(val)
-        except ValueError:
-            return self._parse_int_(question, value_required)
+            val = cast_type(input(question + " "))
+            if (value_required and not val) or (val and not condition(val)):
+                return self._parse_type_(question, cast_type, condition, value_required)
+
+            if not val:
+                return None
+            return val
+        except Exception:
+            return self._parse_type_(question, cast_type, condition, value_required)
 
     def onecmd(self, args):
         try:
