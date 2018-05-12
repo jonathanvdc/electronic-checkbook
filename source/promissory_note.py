@@ -136,7 +136,7 @@ class Check(Serializable):
             'value': self.value,
             'identifier': self.identifier,
             'signature': self.signature,
-            'issue_date': self.issue_date.strftime('%d%m%Y')
+            'expiration_date': self.expiration_date.strftime('%d%m%Y')
         }
 
     def __setstate__(self, state):
@@ -146,7 +146,7 @@ class Check(Serializable):
         self.value = state['value']
         self.identifier = state['identifier']
         self.signature = state['signature']
-        self.issue_date = datetime.strptime(state['issue_date'], '%d%m%Y').date()
+        self.expiration_date = datetime.strptime(state['expiration_date'], '%d%m%Y').date()
 
     def __get_unsigned_version(self):
         return Check(self.bank_id, self.owner_public_key, self.value,

@@ -125,13 +125,13 @@ class Account(object):
     def remove_expired_notes(self):
         """Removes all the unclaimed notes that can no longer be claimed from all
         devices associated with this account."""
-        for device in self.devices:
+        for device in self.devices.values():
             device.remove_expired_notes()
 
     def remove_expired_checks(self):
         """Removes all the expired checks that can no longer be claimed, from all
         devices associated with this account."""
-        for device in self.devices:
+        for device in self.devices.values():
             device.remove_expired_checks()
 
     def deposit(self, amount):
@@ -241,8 +241,7 @@ class Bank(object):
         assert note.is_buyer_signature_authentic
         assert note.is_seller_signature_authentic
 
-        relevant_checks = filter(lambda c: c[0].bank_id == self.identifier,
-                                 note.draft.checks)
+        relevant_checks = list(filter(lambda c: c[0].bank_id == self.identifier, note.draft.checks))
 
         # Checks if the note's transaction date falls in the current month, and thus affects this month's running spending cap
         affects_cap = note.draft.affects_monthly_cap
