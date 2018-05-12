@@ -12,7 +12,7 @@ from account_holder_device import AccountHolderDevice
 from bank import Bank, Account
 from promissory_note import PromissoryNote
 from signing_protocol import register_bank, create_promissory_note, verify_promissory_note, transfer, \
-    perform_transaction, known_banks
+    perform_transaction, known_banks, OfflineException
 
 
 class CreationException(Exception):
@@ -59,7 +59,7 @@ class MainPrompt(Cmd):
         super().__init__()
         self.prompt = 'SimPay $ '
 
-        self.promissory_notes = {}
+        self.promissory_notes = []
         self.people = []
 
         # start the prompt
@@ -174,7 +174,6 @@ class MainPrompt(Cmd):
         amount = int(input("What amount? "))
 
         try:
-            # Create a draft promissory note.
             draft = seller_device.draft_promissory_note(amount)
             print("PROMISSORY NOTE DRAFT CREATION SUCCESSFUL:\n{}\n".format(draft))
 
@@ -192,37 +191,31 @@ class MainPrompt(Cmd):
             verify_promissory_note(note)
             print("PROMISSORY NOTE SUCCESSFULLY VERIFIED\n")
 
-            self.promissory_notes[note] = (seller_device, buyer_device)
+            transfer(note, buyer_device)
+            print("TRANSFER SUCCESSFUL\n")
 
-            if seller_device.internet_connection:
-                transfer(note, buyer_device)
-                print("TRANSFER SUCCESSFUL\n")
-            else:
-                print("Promissory note not yet redeemed as no internet connection was available.\n" +
-                      "Please connect to the internet and redeem the promissory note.\n")
+            self.promissory_notes[note] = (seller_device, buyer_device)
+        except OfflineException:
+            print("Promissory note was created, but not yet redeemed as no internet connection was available.\n" +
+                  "Please connect to the internet and redeem the promissory note.\n")
+            return
         except ValueError as e:
             print("*** " + str(e))
             return
-
     def do_transfer(self, args):
         """Transfer a promissory note from a buyer device to the banks.
 
         Usage: transfer
         """
         try:
-            """buyer_device = \
-                self._get_choice_("ahd", self.ahds(), "Which account holder device is the buyer?")"""
-
             pn = \
-                self._get_choice_("pn", list(self.promissory_notes.keys()), "Which promissory note needs to be redeemed?")
-            if not self.promissory_notes[pn][0].internet_connection:
-                print("Promissory note can not be redeemed as no internet connection is available.\n" +
-                      "Please connect to the internet and try again.\n")
-            else:
-                transfer(pn, self.promissory_notes[pn][1])
-                print("TRANSFER SUCCESSFUL\n")
-        except CreationException as e:
-            print("*** " + str(e))
+                self._get_choice_("pn", list(self.promissory_notes.keys()),
+                                  "Which promissory note needs to be redeemed?")
+            transfer(pn, self.promissory_notes[pn][1])
+            print("TRANSFER SUCCESSFUL\n")
+        except OfflineException:
+            print("Promissory note was created, but not yet redeemed as no internet connection was available.\n" +
+                  "Please connect to the internet and redeem the promissory note.\n")
             return
 
     def do_verify(self, args):

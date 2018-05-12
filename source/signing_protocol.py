@@ -5,6 +5,11 @@ from promissory_note import PromissoryNote
 bank_repository = []
 
 
+class OfflineException(Exception):
+    def __init__(self, *args, **kwargs):
+        Exception.__init__(self, *args, **kwargs)
+
+
 def register_bank(bank):
     bank_repository.append(bank)
 
@@ -58,12 +63,13 @@ def transfer(promissory_note, buyer_device):
         bank.redeem_promissory_note(promissory_note)
 
 
-def perform_transaction(buyer_device, seller_device, amount, internet_connection=True):
+def perform_transaction(buyer_device, seller_device, amount):
     """Transfers a particular amount of money from one account holder
        (the "buyer") to another (the "seller")."""
     # Create and sign a note.
     note = create_promissory_note(buyer_device, seller_device, amount)
     verify_promissory_note(note)
-    if internet_connection:
+    if seller_device.internet_connection:
         transfer(note, buyer_device)
-    return note
+    else:
+        raise OfflineException("Seller device is offline.")
