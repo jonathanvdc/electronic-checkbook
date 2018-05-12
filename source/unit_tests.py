@@ -9,7 +9,7 @@ from bank import Bank, Account, AccountDeviceData, FraudException
 from account_holder_device import AccountHolderDevice
 from promissory_note import Check, PromissoryNote, PromissoryNoteDraft
 from signing_protocol import create_promissory_note, perform_transaction, register_bank
-
+from main_cli import Person
 
 class TestAccountHolderDevice(unittest.TestCase):
     def test_create(self):
@@ -37,8 +37,9 @@ class TestBank(unittest.TestCase):
         """Tests that a device can be added to a bank."""
         bank = Bank(42)
         device = AccountHolderDevice()
-        account = Account("Bill")
-        device_data = bank.add_device(account, device.public_key)
+        account = Account(Person("Bill"))
+        device_data, cert = bank.add_device(account, device.public_key)
+        device.set_cert(cert)
         assert bank.get_account(device.public_key) == account
         assert bank.get_device(device.public_key) == device_data
 
@@ -100,8 +101,8 @@ class TestSigningProtocol(unittest.TestCase):
         buyer_device.register_bank(buyer_bank.identifier, buyer_bank.public_key)
         seller_device.register_bank(seller_bank.identifier, seller_bank.public_key)
 
-        buyer_account = Account("buyer")
-        seller_account = Account("seller")
+        buyer_account = Account(Person("buyer"))
+        seller_account = Account(Person("seller"))
 
         buyer_account.deposit(1000)
 
@@ -133,8 +134,8 @@ class TestSigningProtocol(unittest.TestCase):
         buyer_device.register_bank(bank.identifier, bank.public_key)
         seller_device.register_bank(bank.identifier, bank.public_key)
 
-        buyer_account = Account("Eric Laermans")
-        seller_account = Account("Carrefour Berchem")
+        buyer_account = Account(Person("Eric Laermans"))
+        seller_account = Account(Person("Carrefour Berchem"))
 
         buyer_account.deposit(1000)
 
@@ -163,14 +164,15 @@ class TestSigningProtocol(unittest.TestCase):
         buyer_device.register_bank(bank.identifier, bank.public_key)
         seller_device.register_bank(bank.identifier, bank.public_key)
 
-        buyer_account = Account("Eric Laermans")
-        seller_account = Account("Carrefour Berchem")
+        buyer_account = Account(Person("Eric Laermans"))
+        seller_account = Account(Person("Carrefour Berchem"))
 
         buyer_account.deposit(1000)
 
-        bank.add_device(buyer_account, buyer_device.public_key, 20, 20)
-        bank.add_device(seller_account, seller_device.public_key)
-
+        _, cert = bank.add_device(buyer_account, buyer_device.public_key, 20, 20)
+        buyer_device.set_cert(cert)
+        _, cert = bank.add_device(seller_account, seller_device.public_key)
+        seller_device.set_cert(cert)
         # Issue two check and spend one.
         check = bank.issue_check(buyer_device.public_key, 10)
         buyer_device.add_unspent_check(check)
@@ -203,8 +205,8 @@ class TestSigningProtocol(unittest.TestCase):
         buyer_device.register_bank(buyer_bank.identifier, buyer_bank.public_key)
         seller_device.register_bank(seller_bank.identifier, seller_bank.public_key)
 
-        buyer_account = Account("buyer")
-        seller_account = Account("seller")
+        buyer_account = Account(Person("buyer"))
+        seller_account = Account(Person("seller"))
 
         buyer_account.deposit(1000)
 

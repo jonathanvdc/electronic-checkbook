@@ -5,8 +5,8 @@ import json
 from Crypto.PublicKey import ECC
 from promissory_note import Check
 from signing_protocol import known_banks
-from datetime import date
-
+from account_holder_device import AHD_certificate
+from datetime import date, datetime, timedelta
 
 class FraudException(Exception):
     pass
@@ -199,7 +199,16 @@ class Bank(object):
 
         device_data = AccountDeviceData(device_public_key, cap, monthly_cap)
         account.devices[exported_key] = device_data
-        return device_data
+
+        future_date = datetime.now()
+        try:
+            future_date = future_date.replace(year=datetime.now().year + 1)
+        except ValueError:
+            future_date = future_date + (date(future_date.year + 1, 1, 1) - date(future_date.year, 1, 1))
+
+        cert = (AHD_certificate(account.owner.name, exported_key, self.private_key, future_date))
+
+        return device_data, cert
 
     def has_account(self, public_key):
         """Verifies whether a particular public key has been

@@ -5,8 +5,8 @@ import json
 from collections import deque, defaultdict
 from Crypto.PublicKey import ECC
 
-from promissory_note import PromissoryNoteDraft
-
+from promissory_note import PromissoryNoteDraft, sign_DSS, verify_DSS, string_to_bytes
+from datetime import date, datetime, timedelta
 
 class AccountHolderDevice(object):
     """The data store used by account holder devices."""
@@ -32,6 +32,11 @@ class AccountHolderDevice(object):
         """Gets the total value of all checks in this account holder device."""
         return sum([check.value for value_queue in self.unspent_checks.values() for check in value_queue])
 
+    def get_cert(self):
+        return self.cert
+    def set_cert(self, value):
+        self.cert = value
+
     def all_unspent_checks(self):
         return [check for value_queue in self.unspent_checks.values() for check in value_queue]
 
@@ -47,9 +52,20 @@ class AccountHolderDevice(object):
             for expired_check in expired_checks:
                 check_deque.remove(expired_check)
 
+    def register_name(self, name):
+        self.name = name
+
     def register_bank(self, bank_id, bank_public_key):
         """Registers a bank by mapping its unique identifier to its public key."""
         self.bank_keys[bank_id] = bank_public_key
+
+        # future_date = datetime.now()
+        # try:
+        #     future_date = future_date.replace(year=datetime.now().year + 1)
+        # except ValueError:
+        #     future_date = future_date + (date(future_date.year + 1, 1, 1) - date(future_date.year, 1, 1))
+        #
+        # self.set_cert(AHD_certificate(self.name, self.public_key, self.private_key, future_date))
 
     def is_known_bank(self, bank_id):
         """Tests if the bank with a particular identifier is known to
@@ -205,3 +221,19 @@ class AccountHolderDevice(object):
 
     def __str__(self) -> str:
         return json.dumps(self.to_json(), indent=2)
+class AHD_certificate:
+    def __init__(self, message, AHD_public_key, bankprivatekey, valid_until):
+        if not all(x.isalpha() or x.isspace() for x in message):
+            raise ValueError("invalid message")
+        if not isinstance(valid_until, datetime):
+            raise ValueError("invalid end time")
+        self.message = message
+        self.valid_until = valid_until
+        tosign = message + ", valid until: " + AHD_public_key + valid_until.strftime("%Y-%m-%d %H:%M:%S.%f")
+        tosign = string_to_bytes(tosign)
+        self.signature = sign_DSS(tosign, bankprivatekey)
+    def validate(self, AHD_public_key, bankpublickey):
+        tosign = self.message + ", valid until: " + AHD_public_key + self.valid_until.strftime("%Y-%m-%d %H:%M:%S.%f")
+        tosign = string_to_bytes(tosign)
+        if self.valid_until < datetime.now(): return False
+        return verify_DSS(tosign, self.signature, bankpublickey)
