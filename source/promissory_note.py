@@ -102,7 +102,8 @@ class Check(Serializable):
                  owner_public_key,
                  value,
                  identifier,
-                 signature=b''):
+                 signature=b'',
+                 expiration_date=None):
         """Creates a check from a bank id, the public key of the account holder
            for which the check is issued, the max value of the check, an
            identifier for the check and a signature."""
@@ -111,7 +112,10 @@ class Check(Serializable):
         self.value = value
         self.identifier = identifier
         self.signature = signature
-        self.expiration_date = date.today() + timedelta(CHECK_EXPIRATION)
+        if expiration_date is None:
+            self.expiration_date = date.today() + timedelta(CHECK_EXPIRATION)
+        else:
+            self.expiration_date = expiration_date
 
     def __eq__(self, other):
         """Tests if this check equals another check."""
@@ -146,7 +150,8 @@ class Check(Serializable):
         return uint32_to_bytes(self.bank_id) + \
                string_to_bytes(self.owner_public_key.export_key(format='PEM')) + \
                uint32_to_bytes(self.value) + \
-               uint64_to_bytes(self.identifier)
+               uint64_to_bytes(self.identifier) + \
+               string_to_bytes(self.expiration_date.strftime('%d%m%Y'))
 
     def to_bytes(self):
         """Produces a byte string that represents this check."""
@@ -160,10 +165,11 @@ class Check(Serializable):
         owner_public_key, check_bytes = string_from_bytes(check_bytes)
         value, check_bytes = uint32_from_bytes(check_bytes)
         identifier, check_bytes = uint64_from_bytes(check_bytes)
+        expiration_date, check_bytes = string_from_bytes(check_bytes)
         signature, check_bytes = bytestring_from_bytes(check_bytes)
         return Check(bank_id,
                      ECC.import_key(owner_public_key), value, identifier,
-                     signature)
+                     signature, datetime.strptime(expiration_date, '%d%m%Y').date())
 
     @property
     def expired(self):
@@ -200,7 +206,7 @@ class Check(Serializable):
 class PromissoryNoteDraft(Serializable):
     """A draft promissory note, that is the unsigned part of a promissory note."""
 
-    def __init__(self, seller_public_key, identifier, value):
+    def __init__(self, seller_public_key, identifier, value, transaction_date=None):
         """Creates a promissory note draft from a seller's public key,
            an identifier for the note and the total amount of money
            transferred by the note."""
@@ -208,12 +214,16 @@ class PromissoryNoteDraft(Serializable):
         self.identifier = identifier
         self.value = value
         self.checks = []
-        self.transaction_date = date.today()
+        if transaction_date is None:
+            self.transaction_date = date.today()
+        else:
+            self.transaction_date = transaction_date
 
     def __get_unsigned_bytes(self):
         unsigned = string_to_bytes(self.seller_public_key.export_key(format='PEM')) + \
                    uint64_to_bytes(self.identifier) + \
-                   uint32_to_bytes(self.value)
+                   uint32_to_bytes(self.value) + \
+                   string_to_bytes(self.transaction_date.strftime('%d%m%Y'))
 
         for check, amount in self.checks:
             unsigned += bytestring_to_bytes(check.to_bytes()) + uint32_to_bytes(amount)
@@ -230,7 +240,8 @@ class PromissoryNoteDraft(Serializable):
         seller_public_key, draft_bytes = string_from_bytes(draft_bytes)
         identifier, draft_bytes = uint64_from_bytes(draft_bytes)
         value, draft_bytes = uint32_from_bytes(draft_bytes)
-        draft = PromissoryNoteDraft(ECC.import_key(seller_public_key), identifier, value)
+        transaction_date, draft_bytes = string_from_bytes(draft_bytes)
+        draft = PromissoryNoteDraft(ECC.import_key(seller_public_key), identifier, value, datetime.strptime(transaction_date, '%d%m%Y').date())
         while draft_bytes:
             check, draft_bytes = bytestring_from_bytes(draft_bytes)
             amount, draft_bytes = uint32_from_bytes(draft_bytes)

@@ -186,16 +186,18 @@ class Bank(object):
     def add_account(self, account):
         self.accounts.append(account)
 
-    def add_device(self, account, device_public_key, cap=None):
+    def add_device(self, account, device_public_key, cap=None, monthly_cap=None):
         """Associates a new device with an account. The device to add is
            identified by a public key. Returns the data for the device."""
         if cap is None:
             cap = self.default_cap
+        if monthly_cap is None:
+            monthly_cap = self.default_cap
 
         exported_key = device_public_key.export_key(format='PEM')
         self.ahd_to_account[exported_key] = account
 
-        device_data = AccountDeviceData(device_public_key, cap)
+        device_data = AccountDeviceData(device_public_key, cap, monthly_cap)
         account.devices[exported_key] = device_data
         return device_data
 
@@ -285,7 +287,7 @@ class Bank(object):
                     'Oh lawd %s used expired checks for the transaction!' % buyer_account.owner)
             else:
                 raise FraudException(
-                    'Oh lawd %s is double-spending or %s is double-redeeming!' % buyer_account.owner, seller_account.owner)
+                    'Oh lawd %s is double-spending or %s is double-redeeming!' % (buyer_account.owner, seller_account.owner))
 
             if is_claimable:
                 buyer_account.withdraw(amount)
