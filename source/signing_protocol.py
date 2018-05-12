@@ -66,3 +66,4 @@ def perform_transaction(buyer_device, seller_device, amount, internet_connection
     verify_promissory_note(note)
     if internet_connection:
         transfer(note, buyer_device)
+    return note
