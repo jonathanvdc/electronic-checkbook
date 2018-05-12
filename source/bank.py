@@ -15,41 +15,62 @@ class FraudException(Exception):
 class AccountDeviceData(object):
     """The bank's view of a device belonging to a particular account."""
 
-    def __init__(self, public_key, cap=0):
+    def __init__(self, public_key, cap=0, monthly_cap=2000):
         """Creates device data from a device's public key and a cap on
            the amount of money that can be issued in checks over the
            course of a month/week/other timespan ."""
         self.public_key = public_key
         self.check_counter = 0
         self.cap = cap
-        self.issued_check_value = 0
+        self.monthly_cap = monthly_cap
         self.unspent_checks = set()
+        self.awaiting_claim = set()
 
     @property
     def total_unspent_check_value(self):
         """Gets the total value of all unspent checks for this device."""
         return sum(check.value for check in self.unspent_checks)
 
+    @property
+    def total_unclaimed_note_value(self):
+        """Gets the total value of all notes that have not been claimed by sellers yet."""
+        return sum(note.total_check_value for note in self.awaiting_claim)
+
     def is_unspent(self, check):
         """Checks if a check has not yet been spent."""
         return check in self.unspent_checks
 
-    def spend_check(self, check):
+    def spend_check(self, check, amount=0):
         """Spends a check. This action removes the check from the set of
            unspent checks."""
         self.unspent_checks.remove(check)
+        self.cap -= amount
 
-    def reset_issued_check_value_counter(self):
-        """Resets the issued check value counter back to the total unspent
-           check value for this device."""
-        self.issued_check_value = self.total_unspent_check_value
+    def reset_monthly_spending_cap(self):
+        """Resets the 'remaining allowed' spending cap to the full monthly
+           spending cap for this device. (meant to be used at the start of
+           each month)"""
+        self.cap = self.monthly_cap
+
+    def remove_expired_notes(self):
+        """Removes all the unclaimed notes that can no longer be claimed."""
+        to_remove = set(filter(lambda b: not b.is_claimable, self.awaiting_claim))
+        # restore the note's value to the cap if it expires during the month the original transaction was performed.
+        for note in to_remove:
+            if note.affects_monthly_cap:
+                self.cap += note.value
+            self.awaiting_claim.remove(note)
+
+    def remove_expired_checks(self):
+        """Removes all checks that can no longer be claimed from the unspent checks set."""
+        self.unspent_checks = set(filter(lambda b: not b.unredeemable, self.unspent_checks))
 
     def generate_check(self, value, bank):
         """Generates a check that has a particular max value. The check is
            signed immediately by the bank."""
         assert value <= self.cap
 
-        if self.issued_check_value + value > self.cap:
+        if self.total_unspent_check_value + value > self.cap:
             raise ValueError(
                 'Cannot issue a check worth %d because doing so would exceed '
                 'the cap for the device.' % value)
@@ -59,8 +80,6 @@ class AccountDeviceData(object):
                       self.check_counter)
         # Increment the check counter.
         self.check_counter += 1
-        # Add the check's value to the issued check value.
-        self.issued_check_value += value
         # Sign the check.
         check.sign(bank.private_key)
         self.unspent_checks.add(check)
@@ -71,8 +90,9 @@ class AccountDeviceData(object):
             'Public key': str(self.public_key),
             'Check Counter': str(self.check_counter),
             'cap': str(self.cap),
-            'Issued Check Value': str(self.issued_check_value),
-            'Unspent Checks': [check.to_json() for check in self.unspent_checks]
+            'monthly_cap': str(self.monthly_cap),
+            'Unspent Checks': [check.to_json() for check in self.unspent_checks],
+            'Awaiting Claim': [draft.to_json() for draft in self.awaiting_claim]
         }
 
     def __str__(self) -> str:
@@ -95,6 +115,25 @@ class Account(object):
            with this account."""
         return sum(device.total_unspent_check_value
                    for device in self.devices.values())
+
+    @property
+    def total_unclaimed_note_value(self):
+        """Gets the total value of all unclaimed notes for all devices associated
+                   with this account."""
+        return sum(device.total_unclaimed_note_value
+                   for device in self.devices.values())
+
+    def remove_expired_notes(self):
+        """Removes all the unclaimed notes that can no longer be claimed from all
+        devices associated with this account."""
+        for device in self.devices.values():
+            device.remove_expired_notes()
+
+    def remove_expired_checks(self):
+        """Removes all the expired checks that can no longer be claimed, from all
+        devices associated with this account."""
+        for device in self.devices.values():
+            device.remove_expired_checks()
 
     def deposit(self, amount):
         """Deposits a certain amount of cash into this account."""
@@ -148,16 +187,18 @@ class Bank(object):
     def add_account(self, account):
         self.accounts.append(account)
 
-    def add_device(self, account, device_public_key, cap=None):
+    def add_device(self, account, device_public_key, cap=None, monthly_cap=None):
         """Associates a new device with an account. The device to add is
            identified by a public key. Returns the data for the device."""
         if cap is None:
             cap = self.default_cap
+        if monthly_cap is None:
+            monthly_cap = cap
 
         exported_key = device_public_key.export_key(format='PEM')
         self.ahd_to_account[exported_key] = account
 
-        device_data = AccountDeviceData(device_public_key, cap)
+        device_data = AccountDeviceData(device_public_key, cap, monthly_cap)
         account.devices[exported_key] = device_data
 
         future_date = datetime.now()
@@ -183,11 +224,11 @@ class Bank(object):
         """Gets the data for the device with a particular public key."""
         return self.get_account(public_key).get_device(public_key)
 
-    def reset_issued_check_value_counters(self):
-        """Resets the issued check value counters for this month."""
+    def reset_monthly_spending_caps(self):
+        """Resets the spending caps for this month."""
         for account in self.ahd_to_account.values():
             for device in account.devices.values():
-                device.reset_issued_check_value_counter()
+                device.reset_monthly_spending_cap()
 
     def issue_check(self, public_key, value):
         """Issues a check of a particular value for the device associated
@@ -196,9 +237,11 @@ class Bank(object):
         account = self.get_account(public_key)
         data = account.get_device(public_key)
 
-        # Make sure that issuing a new check will not exceed the balance + credit
+        # Make sure that issuing a new check will not exceed the balance + credit - 'unclaimed note value'
         # for the account.
-        if account.balance + account.max_credit < account.total_unspent_check_value + value:
+        account.remove_expired_notes()
+        account.remove_expired_checks()
+        if account.balance - account.total_unclaimed_note_value + account.max_credit < account.total_unspent_check_value + value:
             raise ValueError(
                 'Check cannot be issued because doing so would exceed '
                 'the account\'s credit.')
@@ -212,8 +255,12 @@ class Bank(object):
         assert note.is_buyer_signature_authentic
         assert note.is_seller_signature_authentic
 
-        relevant_checks = filter(lambda c: c[0].bank_id == self.identifier,
-                                 note.draft.checks)
+        relevant_checks = list(filter(lambda c: c[0].bank_id == self.identifier, note.draft.checks))
+
+        # Checks if the note's transaction date falls in the current month, and thus affects this month's running spending cap
+        affects_cap = note.draft.affects_monthly_cap
+        # Check if the note is still valid and thus if money should be transferred
+        is_claimable = note.draft.is_claimable
         for check, amount in relevant_checks:
             buyer_account = self.get_account(check.owner_public_key)
             seller_bank = list(
@@ -229,13 +276,69 @@ class Bank(object):
                 check.owner_public_key)
 
             if buyer_device_data.is_unspent(check):
-                buyer_device_data.spend_check(check)
+                # This case can only occur if the buyer didn't already hand the note to their bank before.
+                if affects_cap and is_claimable:
+                    buyer_device_data.spend_check(check, amount)
+                else:
+                    buyer_device_data.spend_check(check)
+            elif note.draft in buyer_device_data.awaiting_claim:
+                # This case occurs when the note was handed in before by the buyer, and the unspent checks have already been cleared.
+                # If the note expired and the transaction date falls in the current month, restore the note's value to the spending
+                # cap for this month.
+                if not is_claimable and affects_cap:
+                    buyer_device_data.cap += amount
+            elif not is_claimable:
+                # This case occurs when the note was handed in before by the buyer and the unspent checks have already been cleared,
+                # but has already been removed from the 'awaiting claim' set again by the bank itself because it expired.
+                pass
+            elif check.unredeemable:
+                # This case occurs when the note is still claimable but somehow contains an unredeemable check
+                raise FraudException(
+                    'Oh lawd %s used expired checks for the transaction!' % buyer_account.owner)
             else:
                 raise FraudException(
-                    'Oh lawd %s is double-spending!' % buyer_account.owner)
+                    'Oh lawd %s is double-spending or %s is double-redeeming!' % (buyer_account.owner, seller_account.owner))
 
-            buyer_account.withdraw(amount)
-            seller_account.deposit(amount)
+            if is_claimable:
+                buyer_account.withdraw(amount)
+                seller_account.deposit(amount)
+        # Remove the note from the list of unclaimed notes so it can't be claimed twice. It is assumed that a note only
+        # contains checks from 1 device and bank.
+        some_check_pk = relevant_checks[0][0].owner_public_key
+        self.get_account(some_check_pk).get_device(some_check_pk).awaiting_claim.discard(note.draft)
+
+    def hand_in_promissory_note(self, note):
+        """This action gives a buyer's note copy to the bank to update which checks have been spent.
+        This action does not perform any transfers since it is the seller's responsibility to claim the note."""
+        assert note.is_buyer_signature_authentic
+        assert note.is_seller_signature_authentic
+
+        relevant_checks = filter(lambda c: c[0].bank_id == self.identifier,
+                                 note.draft.checks)
+
+        # Checks if the note's transaction date falls in the current month, and thus affects this month's running spending cap
+        affects_cap = note.draft.affects_monthly_cap
+        # Check if the note is still valid and thus if money should be transferred
+        is_claimable = note.draft.is_claimable
+        for check, amount in relevant_checks:
+            buyer_account = self.get_account(check.owner_public_key)
+
+            assert buyer_account
+
+            buyer_device_data = buyer_account.get_device(
+                check.owner_public_key)
+
+            if buyer_device_data.is_unspent(check):
+                # This case occurs if the note has not been claimed by the seller or handed in by the buyer yet.
+                if affects_cap and is_claimable:
+                    buyer_device_data.spend_check(check, amount)
+                else:
+                    buyer_device_data.spend_check(check)
+
+        # Add the note to the set of notes that have yet to be claimed, if the note is still claimable
+        if is_claimable:
+            some_check_pk = relevant_checks[0][0].owner_public_key
+            self.get_account(some_check_pk).get_device(some_check_pk).awaiting_claim.add(note.draft)
 
     def to_json(self):
         return {

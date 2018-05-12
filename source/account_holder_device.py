@@ -26,6 +26,7 @@ class AccountHolderDevice(object):
         self.bank_keys = {}
         self.max_overcharge = 0.1
         self.check_punishment = 0.5
+
     @property
     def total_check_value(self):
         """Gets the total value of all checks in this account holder device."""
@@ -44,9 +45,16 @@ class AccountHolderDevice(object):
         assert check.owner_public_key == self.public_key
         self.unspent_checks[check.value].append(check)
 
+    def remove_expired_checks(self):
+        """Removes all checks that can no longer be used in promissory notes from the unspent checks."""
+        for check_deque in self.unspent_checks.values():
+            expired_checks = filter(lambda b: b.expired, check_deque)
+            for expired_check in expired_checks:
+                check_deque.remove(expired_check)
 
     def register_name(self, name):
         self.name = name
+
     def register_bank(self, bank_id, bank_public_key):
         """Registers a bank by mapping its unique identifier to its public key."""
         self.bank_keys[bank_id] = bank_public_key
@@ -83,6 +91,9 @@ class AccountHolderDevice(object):
     def add_payment(self, draft):
         """Adds a number of checks to a particular promissory note draft."""
         assert draft.total_check_value == 0
+
+        # Remove all expired checks first so no expired checks will be used in a promissory note.
+        self.remove_expired_checks()
 
         if draft.value > self.total_check_value:
             raise ValueError(

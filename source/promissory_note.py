@@ -5,6 +5,10 @@ import struct
 from Crypto.Hash import SHA3_256
 from Crypto.Signature import DSS
 from Crypto.PublicKey import ECC
+from datetime import date, datetime, timedelta
+
+DAYS_VALID = 10
+CHECK_EXPIRATION = 100
 
 
 def sign_DSS(message, private_key):
@@ -98,7 +102,8 @@ class Check(Serializable):
                  owner_public_key,
                  value,
                  identifier,
-                 signature=b''):
+                 signature=b'',
+                 expiration_date=None):
         """Creates a check from a bank id, the public key of the account holder
            for which the check is issued, the max value of the check, an
            identifier for the check and a signature."""
@@ -107,6 +112,10 @@ class Check(Serializable):
         self.value = value
         self.identifier = identifier
         self.signature = signature
+        if expiration_date is None:
+            self.expiration_date = date.today() + timedelta(CHECK_EXPIRATION)
+        else:
+            self.expiration_date = expiration_date
 
     def __eq__(self, other):
         """Tests if this check equals another check."""
@@ -124,7 +133,8 @@ class Check(Serializable):
             'owner_public_key': self.owner_public_key.export_key(format='PEM'),
             'value': self.value,
             'identifier': self.identifier,
-            'signature': self.signature
+            'signature': self.signature,
+            'expiration_date': self.expiration_date.strftime('%d%m%Y')
         }
 
     def __setstate__(self, state):
@@ -134,12 +144,14 @@ class Check(Serializable):
         self.value = state['value']
         self.identifier = state['identifier']
         self.signature = state['signature']
+        self.expiration_date = datetime.strptime(state['expiration_date'], '%d%m%Y').date()
 
     def __get_unsigned_bytes(self):
         return uint32_to_bytes(self.bank_id) + \
                string_to_bytes(self.owner_public_key.export_key(format='PEM')) + \
                uint32_to_bytes(self.value) + \
-               uint64_to_bytes(self.identifier)
+               uint64_to_bytes(self.identifier) + \
+               string_to_bytes(self.expiration_date.strftime('%d%m%Y'))
 
     def to_bytes(self):
         """Produces a byte string that represents this check."""
@@ -153,10 +165,21 @@ class Check(Serializable):
         owner_public_key, check_bytes = string_from_bytes(check_bytes)
         value, check_bytes = uint32_from_bytes(check_bytes)
         identifier, check_bytes = uint64_from_bytes(check_bytes)
+        expiration_date, check_bytes = string_from_bytes(check_bytes)
         signature, check_bytes = bytestring_from_bytes(check_bytes)
         return Check(bank_id,
                      ECC.import_key(owner_public_key), value, identifier,
-                     signature)
+                     signature, datetime.strptime(expiration_date, '%d%m%Y').date())
+
+    @property
+    def expired(self):
+        """Indicates if the check has expired and thus can no longer be used in promissory notes."""
+        return date.today() > self.expiration_date
+
+    @property
+    def unredeemable(self):
+        """Indicates if the check can no longer be redeemed by sellers."""
+        return date.today() > self.expiration_date + timedelta(DAYS_VALID)
 
     def is_signature_authentic(self, bank_public_key):
         """Verifies the bank's signature. Returns a Boolean
@@ -173,7 +196,8 @@ class Check(Serializable):
         return {
             'Identifier': self.identifier,
             'Bank id': self.bank_id,
-            'Value': self.value
+            'Value': self.value,
+            'Expiration date': self.expiration_date.strftime('%d%m%Y')
         }
 
     def __str__(self) -> str:
@@ -183,7 +207,7 @@ class Check(Serializable):
 class PromissoryNoteDraft(Serializable):
     """A draft promissory note, that is the unsigned part of a promissory note."""
 
-    def __init__(self, seller_public_key, identifier, value):
+    def __init__(self, seller_public_key, identifier, value, transaction_date=None):
         """Creates a promissory note draft from a seller's public key,
            an identifier for the note and the total amount of money
            transferred by the note."""
@@ -191,11 +215,16 @@ class PromissoryNoteDraft(Serializable):
         self.identifier = identifier
         self.value = value
         self.checks = []
+        if transaction_date is None:
+            self.transaction_date = date.today()
+        else:
+            self.transaction_date = transaction_date
 
     def __get_unsigned_bytes(self):
         unsigned = string_to_bytes(self.seller_public_key.export_key(format='PEM')) + \
                    uint64_to_bytes(self.identifier) + \
-                   uint32_to_bytes(self.value)
+                   uint32_to_bytes(self.value) + \
+                   string_to_bytes(self.transaction_date.strftime('%d%m%Y'))
 
         for check, amount in self.checks:
             unsigned += bytestring_to_bytes(check.to_bytes()) + uint32_to_bytes(amount)
@@ -212,7 +241,8 @@ class PromissoryNoteDraft(Serializable):
         seller_public_key, draft_bytes = string_from_bytes(draft_bytes)
         identifier, draft_bytes = uint64_from_bytes(draft_bytes)
         value, draft_bytes = uint32_from_bytes(draft_bytes)
-        draft = PromissoryNoteDraft(ECC.import_key(seller_public_key), identifier, value)
+        transaction_date, draft_bytes = string_from_bytes(draft_bytes)
+        draft = PromissoryNoteDraft(ECC.import_key(seller_public_key), identifier, value, datetime.strptime(transaction_date, '%d%m%Y').date())
         while draft_bytes:
             check, draft_bytes = bytestring_from_bytes(draft_bytes)
             amount, draft_bytes = uint32_from_bytes(draft_bytes)
@@ -226,6 +256,17 @@ class PromissoryNoteDraft(Serializable):
            promissory note draft are annotated."""
         return sum(amount for _, amount in self.checks)
 
+    @property
+    def is_claimable(self):
+        """Indicates if the note is still claimable (if its transaction date falls within
+        a set amount of days of the current date)"""
+        return (date.today() - self.transaction_date).days <= DAYS_VALID
+
+    @property
+    def affects_monthly_cap(self):
+        """Indicates whether the note's transaction date falls in the current month, and thus affects this month's running spending cap"""
+        return self.transaction_date.year == date.today().year and self.transaction_date.month == date.today().month
+
     def append_check(self, check, amount):
         """Adds a check to this promissory note draft and annotates it with
            the amount of currency that is assigned to it."""
@@ -236,7 +277,8 @@ class PromissoryNoteDraft(Serializable):
         return {
             'Identifier': self.identifier,
             'Seller public key': str(self.seller_public_key),
-            'Value': self.value
+            'Value': self.value,
+            'Transaction date': self.transaction_date.strftime('%d%m%Y')
         }
 
     def __str__(self) -> str:
@@ -302,6 +344,12 @@ class PromissoryNote(Serializable):
         whether their individually contained values do not exceed their respective maximum values."""
         return all(
             map(lambda check: check[0].value >= check[1], self.draft.checks))
+
+    @property
+    def has_correct_transaction_date(self):
+        """Verifies whether the transaction date corresponds to the current date.
+        Returns a Boolean reflecting the truth of this property"""
+        return self.draft.transaction_date == date.today()
 
     @staticmethod
     def sign_seller(note_bytes, private_key):

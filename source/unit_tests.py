@@ -106,7 +106,7 @@ class TestSigningProtocol(unittest.TestCase):
 
         buyer_account.deposit(1000)
 
-        buyer_bank.add_device(buyer_account, buyer_device.public_key, 1000)
+        buyer_bank.add_device(buyer_account, buyer_device.public_key, 1000, 1000)
         seller_bank.add_device(seller_account, seller_device.public_key)
 
         check = buyer_bank.issue_check(buyer_device.public_key, 10)
@@ -139,7 +139,7 @@ class TestSigningProtocol(unittest.TestCase):
 
         buyer_account.deposit(1000)
 
-        bank.add_device(buyer_account, buyer_device.public_key, 1000)
+        bank.add_device(buyer_account, buyer_device.public_key, 1000, 1000)
         bank.add_device(seller_account, seller_device.public_key)
 
         # Issue a check and spend it.
@@ -169,7 +169,7 @@ class TestSigningProtocol(unittest.TestCase):
 
         buyer_account.deposit(1000)
 
-        _, cert = bank.add_device(buyer_account, buyer_device.public_key, 20)
+        _, cert = bank.add_device(buyer_account, buyer_device.public_key, 20, 20)
         buyer_device.set_cert(cert)
         _, cert = bank.add_device(seller_account, seller_device.public_key)
         seller_device.set_cert(cert)
@@ -184,7 +184,7 @@ class TestSigningProtocol(unittest.TestCase):
             bank.issue_check(buyer_device.public_key, 10)
 
         # Now reset the counters.
-        bank.reset_issued_check_value_counters()
+        bank.reset_monthly_spending_caps()
 
         # Verify that we can issue exactly one check worth 10.
         buyer_device.add_unspent_check(bank.issue_check(buyer_device.public_key, 10))
@@ -210,7 +210,7 @@ class TestSigningProtocol(unittest.TestCase):
 
         buyer_account.deposit(1000)
 
-        buyer_bank.add_device(buyer_account, buyer_device.public_key, 1000)
+        buyer_bank.add_device(buyer_account, buyer_device.public_key, 1000, 1000)
         seller_bank.add_device(seller_account, seller_device.public_key)
         for value, times in [(5, 3), (10, 2), (50, 1), (100, 1), (20, 2)]:
             for _ in range(times):
