@@ -12,7 +12,7 @@ from account_holder_device import AccountHolderDevice
 from bank import Bank, Account
 from promissory_note import PromissoryNote
 from signing_protocol import register_bank, create_promissory_note, verify_promissory_note, transfer, \
-    perform_transaction, known_banks, OfflineException
+    known_banks, OfflineException
 
 
 class CreationException(Exception):
@@ -191,7 +191,7 @@ class MainPrompt(Cmd):
             verify_promissory_note(note)
             print("PROMISSORY NOTE SUCCESSFULLY VERIFIED\n")
 
-            transfer(note, buyer_device)
+            transfer(note, buyer_device, seller_device)
             print("TRANSFER SUCCESSFUL\n")
 
             self.promissory_notes[note] = (seller_device, buyer_device)
@@ -202,6 +202,7 @@ class MainPrompt(Cmd):
         except ValueError as e:
             print("*** " + str(e))
             return
+
     def do_transfer(self, args):
         """Transfer a promissory note from a buyer device to the banks.
 
@@ -211,7 +212,7 @@ class MainPrompt(Cmd):
             pn = \
                 self._get_choice_("pn", list(self.promissory_notes.keys()),
                                   "Which promissory note needs to be redeemed?")
-            transfer(pn, self.promissory_notes[pn][1])
+            transfer(pn, self.promissory_notes[pn][1], self.promissory_notes[pn][0])
             print("TRANSFER SUCCESSFUL\n")
         except OfflineException:
             print("Promissory note was created, but not yet redeemed as no internet connection was available.\n" +
@@ -314,7 +315,8 @@ class MainPrompt(Cmd):
         bank = \
             self._get_choice_("bank", known_banks(), "Which bank should issue the check?")
         device = \
-            self._get_choice_("ahd", [ahd for account in bank.accounts for ahd in account.owner.ahds()], "For which account holder device?")
+            self._get_choice_("ahd", [ahd for account in bank.accounts for ahd in account.owner.ahds()],
+                              "For which account holder device?")
         amount = self._parse_int_("What amount?", True)
 
         try:
