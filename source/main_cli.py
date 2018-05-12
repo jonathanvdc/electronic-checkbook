@@ -94,7 +94,8 @@ class MainPrompt(Cmd):
         try:
             creator = getattr(self, "create_" + param)
             result = creator()
-        except AttributeError:
+        except AttributeError as e:
+            print("*** " + str(e))
             return
         except CreationException as e:
             print("*** " + str(e))
@@ -287,10 +288,10 @@ class MainPrompt(Cmd):
 
         limit = self._parse_int_("what is the spending limit for this ahd?")
         if limit:
-            bank.add_device(account, result.public_key, cap=limit)
+            _, cert = bank.add_device(account, result.public_key, cap=limit)
         else:
-            bank.add_device(account, result.public_key)
-
+            _, cert = bank.add_device(account, result.public_key)
+        result.set_cert(cert)
         account.owner.add_ahd(account, result)
         return result
 
@@ -316,6 +317,14 @@ class MainPrompt(Cmd):
         buyer_device = \
             self._get_choice_("ahd", self.ahds(), "Which account holder device is the buyer?")
 
+        if not seller_device.cert.validate(seller_device.public_key.export_key(format='PEM'), list(seller_device.bank_keys.values())[0]):
+            raise ValueError("Invalid certificate")
+
+        print("you are about to transfer money to: " + seller_device.cert.message + "\n")
+
+        answer = input("Do you want to continue? (y/n)")
+        if answer != "y":
+            raise ValueError("Aborted")
         amount = self._parse_int_("What amount?", True)
 
         # TODO: maybe split this process (especially signing protocol) for demonstration purposes
