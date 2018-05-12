@@ -76,6 +76,8 @@ class AccountHolderDevice(object):
         if draft.value == 0:
             assert draft.total_check_value == draft.value
             return
+        if draft.value < 0:
+            raise ValueError
         # TODO: refactoren
         remaining_value = draft.value
         # estimate the maximum total value of checks that will be used in this draft
