@@ -59,7 +59,7 @@ class MainPrompt(Cmd):
         super().__init__()
         self.prompt = 'SimPay $ '
 
-        self.promissory_notes = []
+        self.promissory_notes = {}
         self.people = []
 
         # start the prompt
