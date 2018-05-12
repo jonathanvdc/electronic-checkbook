@@ -168,33 +168,11 @@ class MainPrompt(Cmd):
         Usage: transaction
         """
 
-        seller_device = \
-            self._get_choice_("ahd", self.ahds(), "Which account holder device is the seller?")
-        buyer_device = \
-            self._get_choice_("ahd", self.ahds(), "Which account holder device is the buyer?")
-        amount = int(input("What amount? "))
-
         try:
-            draft = seller_device.draft_promissory_note(amount)
-            print("PROMISSORY NOTE DRAFT CREATION SUCCESSFUL:\n{}\n".format(draft))
-
-            # Have the buyer attach checks to it.
-            buyer_device.add_payment(draft)
-            print("CHECKS SUCCESSFULLY ADDED:\n{}\n".format(draft))
-
-            # Sign it
-            note = PromissoryNote(draft.to_bytes())
-            note = PromissoryNote.from_bytes(PromissoryNote.sign_seller(note.to_bytes(), seller_device.private_key))
-            print("UNSIGNED PROMISSORY NOTE SUCCESSFULLY SIGNED BY SELLER:\n{}\n".format(note))
-            note = PromissoryNote.from_bytes(PromissoryNote.sign_buyer(note.to_bytes(), buyer_device.private_key))
-            print("PARTIALLY-SIGNED PROMISSORY NOTE SUCCESSFULLY SIGNED BY BUYER:\n{}\n".format(note))
-
+            note = self.create_pn()
             verify_promissory_note(note)
             print("PROMISSORY NOTE SUCCESSFULLY VERIFIED\n")
-
-            self.promissory_notes[note] = (seller_device, buyer_device)
-
-            transfer(note, buyer_device, seller_device)
+            transfer(note, *self.promissory_notes[note][::-1])
             print("TRANSFER SUCCESSFUL\n")
         except OfflineException:
             print("Promissory note was created, but not yet redeemed as no internet connection was available.\n" +
@@ -352,9 +330,19 @@ class MainPrompt(Cmd):
 
         # TODO: maybe split this process (especially signing protocol) for demonstration purposes
         try:
-            result = create_promissory_note(buyer_device, seller_device, amount)
-            self.promissory_notes[result] = (seller_device, buyer_device)
-            return result
+            draft = seller_device.draft_promissory_note(amount)
+            print("PROMISSORY NOTE DRAFT CREATION SUCCESSFUL:\n{}\n".format(draft))
+            # Have the buyer attach checks to it.
+            buyer_device.add_payment(draft)
+            print("CHECKS SUCCESSFULLY ADDED:\n{}\n".format(draft))
+            # Sign it
+            note = PromissoryNote(draft.to_bytes())
+            note = PromissoryNote.from_bytes(PromissoryNote.sign_seller(note.to_bytes(), seller_device.private_key))
+            print("UNSIGNED PROMISSORY NOTE SUCCESSFULLY SIGNED BY SELLER:\n{}\n".format(note))
+            note = PromissoryNote.from_bytes(PromissoryNote.sign_buyer(note.to_bytes(), buyer_device.private_key))
+            print("PARTIALLY-SIGNED PROMISSORY NOTE SUCCESSFULLY SIGNED BY BUYER:\n{}\n".format(note))
+            self.promissory_notes[note] = (seller_device, buyer_device)
+            return note
         except Exception as e:
             print("*** " + str(e))
             raise CreationException("Could not create promissory note")
