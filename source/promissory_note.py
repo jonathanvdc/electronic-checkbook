@@ -196,7 +196,8 @@ class Check(Serializable):
         return {
             'Identifier': self.identifier,
             'Bank id': self.bank_id,
-            'Value': self.value
+            'Value': self.value,
+            'Expiration date': self.expiration_date.strftime('%d%m%Y')
         }
 
     def __str__(self) -> str:
@@ -276,7 +277,8 @@ class PromissoryNoteDraft(Serializable):
         return {
             'Identifier': self.identifier,
             'Seller public key': str(self.seller_public_key),
-            'Value': self.value
+            'Value': self.value,
+            'Transaction date': self.transaction_date.strftime('%d%m%Y')
         }
 
     def __str__(self) -> str:

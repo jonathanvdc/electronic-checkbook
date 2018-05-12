@@ -90,8 +90,9 @@ class AccountDeviceData(object):
             'Public key': str(self.public_key),
             'Check Counter': str(self.check_counter),
             'cap': str(self.cap),
-            'Issued Check Value': str(self.issued_check_value),
-            'Unspent Checks': [check.to_json() for check in self.unspent_checks]
+            'monthly_cap': str(self.monthly_cap),
+            'Unspent Checks': [check.to_json() for check in self.unspent_checks],
+            'Awaiting Claim': [draft.to_json() for draft in self.awaiting_claim]
         }
 
     def __str__(self) -> str:
