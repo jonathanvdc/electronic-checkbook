@@ -11,6 +11,7 @@
 \usepackage{multicol}
 \usepackage{todonotes}
 \usepackage{tabularx}
+\usepackage{pdflscape}
 
 % Capitalize 'Section 1.1'.
 \renewcommand*{\sectionautorefname}{Section}
@@ -64,6 +65,8 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 		\item a number of unspent checks, the \emph{checkbook} (stored on the device).
 	\end{itemize}
 
+	It is worth clarifying that an account holder device is a \emph{logical} device that may, but does not have to, correspond to a physical device. For example, a phone that is authorized for $n$ different accounts acts as $n$ different account holder devices.
+
 	\paragraph{Checks}
 	
 	Every check is unique and each check specifies
@@ -74,6 +77,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 		\item the check's value, that is, the maximum amount of money the check can be used for, \todo{include time stamps to indicate when check is valid}
 		\item a number that uniquely identifies the check within the space of all checks issued for the device---this can be a sequence number or a random number---and
 		\item a signature of the above produced by the private key of the bank that issued the check. \todo{Which signature algorithm?}
+		\item an expiration date. Expired checks can no longer be used to make promissory notes.
 	\end{itemize}
 
 	The number of checks is such that the total value of all checks on an account holder's device never exceeds the spending cap for that device.
@@ -89,6 +93,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 		\item a list of checks and the amount of money each check transfers (the total amount transferred by the checks equals the sum value on the promissory note),
 		\item a signature of all aforementioned fields by the seller's private key, \todo{Which signature algorithm?} and
 		\item a signature of all aforementioned fields by the buyer's private key. \todo{Which signature algorithm?}
+		\item a time-stamp of the date on which the transaction between buyer and seller was made. Promissory notes can only be claimed by the seller up to X days after the transaction date and checks can still be redeemed up to X days after they expired.
 	\end{itemize}
 
 	A promissory note can be submitted to the bank, which will then wire the money from the buyer's account to the seller's. The creation and processing of promissory notes is described in more detail in \autoref{sec:protocols}.
@@ -100,29 +105,57 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 	
 	\subsection{Signing a promissory note}
 
-	A promissory note is an agreement between two parties---a buyer and a seller---to transfer a particular amount of money from the buyer's account to the seller's. Promissory notes are redeemed by the seller when they can connect to their bank. From the buyer's perspective, signing a promissory note is the same as handing over cash to the seller.
+	A promissory note is an agreement between two parties---a buyer and a seller---to transfer a particular amount of money from the buyer's account to the seller's. Promissory notes are redeemed by the seller when they can connect to their bank. From the buyer's perspective, signing a promissory note is the same as handing over cash to the seller. 
 	
 	This section describes the protocol for creating promissory notes.
 
 	\subsubsection{Signing algorithm}
 	
-	The creation of a fully signed promissory note consists of a number of steps.
+	The creation of a fully signed promissory note consists of a number of steps. The steps below are illustrated by \autoref{fig:signing_algorithm}.
 	
 	\begin{enumerate}
 		\item The seller drafts a proto--promissory note that consists of the first fields of a promissory note: the seller's public key, a unique identifier for the promissory note and the amount of money to transfer.
 		
+		\item The seller sends the draft to the buyer.
+		
 		\item The buyer either chooses to agree to the transaction or not. If the buyer does not want to or cannot agree to the transaction, the seller's proto--promissory note is discarded.
 		
-		\item If the buyer agrees to the transaction, then they attach one or more checks to the proto--promissory note and tags each check with a particular amount of money to transfer. This unsigned promissory note is sent back to the seller for signing.
+		\item If the buyer agrees to the transaction, then they attach one or more checks to the proto--promissory note and tags each check with a particular amount of money to transfer. 
 		
-		\item The seller sends the unsigned promissory note and sends the resulting partially-signed promissory note to the buyer.
+		\item This unsigned promissory note is sent back to the seller for signing.
 		
-		\item The buyer signs the partially-signed promissory note, turning it into a fully-signed promissory note, which is subsequently sent to the seller.
+		\item The seller signs the unsigned promissory note.
+		
+		\item The seller sends the resulting partially-signed promissory note to the buyer.
+		
+		\item The buyer signs the partially-signed promissory note, turning it into a fully-signed promissory note.
+		
+		\item This fully-signed promissory note is subsequently sent to the seller.
 	\end{enumerate}
 
-	After going through the motions described above, both the seller and the buyer can retain a copy of the fully-signed promissory note, which doubles as a receipt.
+	After going through the motions described above, both the seller and the buyer retain a copy of the fully-signed promissory note, which doubles as a receipt.
 	
 	Anything short of a fully-signed promissory note is null and void---the bank will not accept, e.g., an unsigned or partially-signed promissory note.
+	
+	\end{multicols}
+	\newpage
+    
+    \begin{landscape}
+    \thispagestyle{empty}
+    
+    	\begin{figure}
+        	\centering
+    	    \includegraphics[width=503pt]{img/signing_algorithm}
+            \caption{Signing Algorithm}
+            \label{fig:signing_algorithm}
+    	\end{figure}
+        
+        \vfill
+		\raisebox{1em}{\makebox[\linewidth]{\thepage}}
+    \end{landscape}
+	
+    \newpage
+	\begin{multicols}{2}
 	
 	\subsubsection{Well-formedness}
 
@@ -132,13 +165,14 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 		\item all signatures must be verified against their public keys by each party,
 		\item the sum of the amounts of money specified by the checks must match the total amount on the promissory note, and
 		\item the amount of money with which every check is tagged must not exceed the check's maximum value.
+		\item the note should not contain checks that expired before the transaction date time-stamp.
 	\end{itemize}
 
-	Additionally, each party should also make sure that the other party doesn't (subtly or otherwise) change the promissory note halfway through the transaction. For example, the seller should check that the amount of money specified by the unsigned promissory note sent to them by the buyer matches the amount the seller originally specified.
+	Additionally, each party should also make sure that the other party doesn't (subtly or otherwise) change the promissory note halfway through the transaction. For example, the seller should check that the amount of money specified by the unsigned promissory note sent to them by the buyer matches the amount the seller originally specified. It is also important for both parties to confirm the correctness of the time-stamp, as an incorrect time-stamp can result in the note being unredeemable by the seller (note expired before it can even be sent to the bank), or the note being redeemable beyond the intended expiration date.
 	
 	If the seller is online, then they must verify that the checks they receive have not been spent already. If they are offline, they cannot do so. See \autoref{sec:double-spending-checks} for a more thorough discussion of the double-spending problem.
 
-	\subsubsection{Security requirements}
+	\subsubsection{Goals and security requirements}
 
 	The promissory note signing algorithm achieves a number of security requirements.
 	
@@ -162,17 +196,39 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 	If the buyer can connect to their bank, then they can ask their bank if the seller is indeed an account holder, that is, they can verify the origin of the partially-signed promissory note before signing it themselves.
 	
-	If the buyer is offline, then they cannot verify the seller's authenticity. This lack of seller authentication is fairly harmless because a promissory note signed by a seller who is not also an account holder cannot be redeemed by the seller. See \autoref{sec:lack-of-seller-authentication} for a more thorough discussion of the consequences of buyers' inability to authenticate sellers when they are offline.
+	If the buyer is offline, then they cannot verify the seller's authenticity. This lack of seller authentication is fairly harmless because a promissory note signed by a seller who is not also an account holder cannot be redeemed by the seller. This point is reiterated in \autoref{sec:lack-of-seller-authentication}.
 
-	\subsection{Redeeming a promissory note}
+	\subsubsection{Non-goals}
 
-	To redeem a promissory note, the seller sends it to their bank. The bank verifies the promissory note's authenticity and transfers the amount specified by the promissory note from the buyer's account to the seller's \emph{if this is the first time that the promissory note is redeemed.} Trying to redeem the same promissory note twice does nothing. \todo{check note timestamp, debt gone if unclaimed}
+	The protocol described in this document aims to accomplish the goals stated in the previous section, but it consciously does not try to conform to the requirements listed in this section.
+
+	The non-goals listed here are not considered entirely irrelevant to electronic payments. Rather, they are considered to be out of scope because a real-life implementation of the payment system is not intended to exist in isolation: there are already battle-tested solutions for the security requirements listed here and the payment system is envisioned to coexist with them instead of supplanting them.
+
+	\paragraph{Data confidentiality}
+
+	It is arguably desirable to prevent others from eavesdropping on a payment. The protocol described in this section does not address this directly. Confidentiality can be accomplished by running the protocol set out here over a secure channel, e.g., over TLS.
+
+	\paragraph{Availability}
+
+	After signing a promissory note, the seller should be able to submit the fully signed promissory note to the bank. Hence, one might argue that the bank's servers should be available whenever the seller has an Internet connection. However, the protocol with which an account holder communicates with their bank is left to the bank to specify, so any availability requirements it raises are out of scope.
+
+	\subsection{Redeeming a promissory note as the seller}
+
+	To redeem a promissory note, the seller sends it to their bank. The bank verifies the promissory note's authenticity and transfers the amount specified by the promissory note from the buyer's account to the seller's \emph{if this is the first time that the promissory note is redeemed.} Trying to redeem the same promissory note twice does nothing. Furthermore, the promissory notes are no longer valid X days after the included time-stamp. If a seller tries to redeem the note in this scenario, the debt is instead cleared from the buyer's account and, if applicable\footnote{See, Redeeming a promissory note as the buyer}, the buyer's monthly cap is restored to reflect the transaction now being declared void.
 
 	The exact protocol used by the seller and the bank to redeem promissory notes is up to the bank to specify or implement. Similarly, the protocol used by banks to negotiate a wire transfer is not specified here either.
 
 	It may be desirable to transfer promissory notes over a secure connection to prevent eavesdropping, but that is not necessary to make the payment system work. The signatures on a promissory note ensure that the note cannot be tampered with.
 	
-	\todo{design reference protocol}
+	\subsection{Redeeming a promissory note as the buyer}
+	
+	Buyers should be able to pass their fully signed promissory notes to their bank to confirm their successful transactions with the bank. This allows the bank to update the client's unspent checks and monthly spending cap in advance of the sellers redeeming the respective notes so that the client can request new checks with his bank. Without this option, if a buyer uses for example a 500\$ check for a 10\$ transaction, the buyer will be locked out of 490\$ he can't spend until the seller redeems the promissory note with the bank.
+	
+	Additionally, checks have an expiration date that is tracked by the bank in case a seller never claims a promissory note and the buyer loses his copy of that same note. This extra measure prevents a buyer from being permanently locked out of spending parts of his money.
+	
+	A buyer passing a note to his bank should not necessarily trigger an actual money transfer as the burden of redeeming the note lies with the seller.
+	
+	\todo{design reference protocol?}
 
 	\subsection{Transferring checks}
 
@@ -197,12 +253,14 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 	The encodings for checks and promissory notes make use of the following data types:
 	
 	\begin{itemize}
-		\item \textbf{$k$-bit unsigned integers.} These are stored in little-endian byte order.
+		\item \textbf{$k$-bit integers.} These are stored in little-endian byte order. Unless explicitly stated otherwise, all integers in this section are unsigned.
 		
 		\item \textbf{Length-prefixed strings.} A length-prefixed string consists of a 32-bit unsigned integer followed by $n$ bytes, where $n$ is the integer prefix.
 		
 		\item \textbf{Signatures.} A signature is a special kind of length-prefixed string. The contents of a signature are obtained by first taking the SHA3-256 hash of the data to which the signature pertains and then applying the FIPS 186-4 (EC)DSA algorithm to that hash \cite{fips-202-sha3, fips-186-4-dss}.
-
+		
+		\item \textbf{Lists.} A list of items, encoded separately and placed back-to-back.
+		
 	\end{itemize}
 
 	\subsection{Key types}
@@ -218,19 +276,38 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 	When transferred during the promissory note signing process, a check is encoded as a concatenation of the following fields:
 	
 	\begin{description}
-		\item[\textbf{\texttt{bank\_id}} (32-bit unsigned integer)] A unique identifier for the bank that issued the check.
+		\item[\textbf{\texttt{bank\_id}} (32-bit integer)] A unique identifier for the bank that issued the check.
 
 		\item[\texttt{owner\_public\_key} (length-prefixed string)] The public key of the account holder device for which the check was issued, encoded as a UTF-8 string in the PEM format \cite{rfc-pem}.
 
-		\item[\texttt{value} (32-bit unsigned  integer)] The maximum amount of money the check can be used for.
+		\item[\texttt{value} (32-bit  integer)] The maximum amount of money the check can be used for.
 
-		\item[\texttt{identifier} (64-bit unsigned integer)] An identifier that uniquely identifies this check among all of the checks assigned to the account holder device.
+		\item[\texttt{identifier} (64-bit integer)] An identifier that uniquely identifies this check among all of the checks assigned to the account holder device.
 
 		\item[\texttt{signature} (signature)] A signature of all aforementioned fields.
 	\end{description}
 
 	\subsection{Promissory notes}
  
+ The actual promissory notes, which are encoded and decoded on multiple occasions during the signing process, can be subdivided in two categories: the draft and the actual promissory note. However, as the draft is actually a nascent promissory note, this subdivision is in fact artificial. A promissory note is therefore encoded as a concatenation of the following fields:
+ 
+	 \begin{description}
+	 	\item[\textbf{\texttt{draft\_size} (32-bit integer)}] The size of the promissory note's draft section, in bytes. The draft section consists of fields \texttt{seller\_public\_key}, \texttt{identifier}, \texttt{value} and \texttt{checks}.
+	 	
+		\item[\textbf{\texttt{seller\_public\_key}} (length-prefixed string)]  The public key of the account holder device of the seller, encoded as a UTF-8 string in the PEM format \cite{rfc-pem}.
+
+		\item[\texttt{identifier} (64-bit integer)] An identifier that uniquely defines the promissory note.
+
+		\item[\texttt{value} (32-bit integer)] The total amount of money transferred by the note.
+
+		\item[\texttt{checks} (list of check--32-bit integer pairs)] A list of pairs. Each pair consists of a length-prefixed encoded check---as always, the length prefix is a 32-bit integer---followed by a 32-bit integer that specifies the amount of money to spend using the aforementioned check.
+
+		\item[\texttt{seller\_signature} (signature)] A signature of all aforementioned fields, signed by the seller device using its private key.
+		
+		\item[\texttt{buyer\_signature} (signature)] A signature of all aforementioned fields, signed by the buyer device using its private key.
+	\end{description}
+ 
+  
 
 	\section{Online and offline behavior}
 
@@ -274,7 +351,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 	The identity of a seller cannot be authenticated when the buyer is offline. This is not a real problem because a promissory note signed by an inauthentic seller is worth nothing---the bank will not redeem it. So it is decidedly against the seller's interests to use a public, private key pair that is not tied to their account.
 	
-	\subsubsection{Theft}
+	\subsubsection{Theft of promissory notes}
 
 	An attacker can steal a compromised offline seller's unredeemed promissory notes. Such an event is decidedly unfortunate for the seller, but the attacker cannot steal the value of the unredeemed promissory notes because they are not transferable: a promissory note negotiates the transfer of money from a particular buyer to a particular seller. 
 
@@ -328,10 +405,28 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 	\end{itemize}
 
 	To summarize, there are no fortunes to be made here and the attacker will likely get arrested quickly. It is far more profitable to just rob a store outright. Coincidentally, that also takes less skill, time and investment on the attacker's part.
+
+	\subsubsection{Theft of account holder device}
+
+	An attacker might steal an account holder device---or the data it contains. This attack is not addressed directly by the payment system.
+
+	In practice, implementations should encrypt sensitive information on account holder devices. It would be unwise indeed to store unspent checks and account holder device's private key as plain text. A PIN, password or other authentication mechanism can be used to unlock access to the encrypted data on account holder devices.
+
+	An attacker might still coerce an account holder into giving up their PIN or password, but other payment systems such as credit cards and cash are also vulnerable to this particular attack.
+
+	\section{Conclusion}
+
+	This document proposed a lightweight approach to agreeing on and executing payments, with an emphasis on data integrity, non-repudiation and data-origin authentication.
 	
+	Typical attacks such as forging checks and stealing promissory notes are mitigated by the way data is encoded.
+
+	More sophisticated attacks such as double-spending checks cannot always be \emph{prevented,} but they can be \emph{detected} after the fact. Action can subsequently be taken to deal with bad-faith actors.
+
+	Some attacks are not mitigated because they \emph{cannot} in fact be mitigated. This final category includes device + PIN/password theft, an attack that works for essentially all payment systems.
+
 	\bibliographystyle{acm}
 	\bibliography{spec} 
-	
+
 	\end{multicols}
 
 \end{document}

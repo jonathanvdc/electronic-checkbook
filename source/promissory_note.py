@@ -1,6 +1,5 @@
 """Introduces the notions of a check, a promissory note draft and a promissory note."""
 
-import pickle
 import json
 import struct
 from Crypto.Hash import SHA3_256
@@ -71,7 +70,7 @@ def uint64_from_bytes(value):
 
 
 def bytestring_from_bytes(value):
-    """Encodes a byte string as a length-prefixed sequence of bytes.
+    """Decodes a byte string as a length-prefixed sequence of bytes.
        Returns the decoded byte string and the remainder of
        the byte string"""
     length, data = uint32_from_bytes(value)
@@ -88,15 +87,11 @@ class Serializable(object):
     """A base class for objects that can be encoded and decoded again."""
 
     def to_bytes(self):
-        """Produces a byte string that represents this object."""
-        # TODO: we should probably define and implement a *portable*
-        # format that is not tied to Python's pickle library.
-        return pickle.dumps(self)
+        raise NotImplementedError
 
     @staticmethod
     def from_bytes(source):
-        """Reads an object from a byte string."""
-        return pickle.loads(source)
+        raise NotImplementedError
 
 
 class Check(Serializable):
@@ -128,8 +123,7 @@ class Check(Serializable):
 
     def __getstate__(self):
         """Retrieves the state of this object for serialization."""
-        # Apparently the public key used by the pycrypto module wasn't supported by pickle,
-        # but it was possible to force the issue but using the key's built-in serialization
+        # pycrypto's built-in serialization for the public key is used
         return {
             'bank_id': self.bank_id,
             'owner_public_key': self.owner_public_key.export_key(format='PEM'),
@@ -148,19 +142,16 @@ class Check(Serializable):
         self.signature = state['signature']
         self.expiration_date = datetime.strptime(state['expiration_date'], '%d%m%Y').date()
 
-    def __get_unsigned_version(self):
-        return Check(self.bank_id, self.owner_public_key, self.value,
-                     self.identifier, b'')
-
     def __get_unsigned_bytes(self):
         return uint32_to_bytes(self.bank_id) + \
-            string_to_bytes(self.owner_public_key.export_key(format='PEM')) + \
-            uint32_to_bytes(self.value) + \
-            uint64_to_bytes(self.identifier)
+               string_to_bytes(self.owner_public_key.export_key(format='PEM')) + \
+               uint32_to_bytes(self.value) + \
+               uint64_to_bytes(self.identifier)
 
     def to_bytes(self):
         """Produces a byte string that represents this check."""
-        return self.__get_unsigned_bytes() + bytestring_to_bytes(self.signature)
+        return self.__get_unsigned_bytes() + bytestring_to_bytes(
+            self.signature)
 
     @staticmethod
     def from_bytes(check_bytes):
@@ -170,12 +161,9 @@ class Check(Serializable):
         value, check_bytes = uint32_from_bytes(check_bytes)
         identifier, check_bytes = uint64_from_bytes(check_bytes)
         signature, check_bytes = bytestring_from_bytes(check_bytes)
-        return Check(
-            bank_id,
-            ECC.import_key(owner_public_key),
-            value,
-            identifier,
-            signature)
+        return Check(bank_id,
+                     ECC.import_key(owner_public_key), value, identifier,
+                     signature)
 
     @property
     def expired(self):
@@ -187,7 +175,6 @@ class Check(Serializable):
         """Indicates if the check can no longer be redeemed by sellers."""
         return date.today() > self.expiration_date + timedelta(DAYS_VALID)
 
-    @property
     def is_signature_authentic(self, bank_public_key):
         """Verifies the bank's signature. Returns a Boolean
            that tells if the signature is authentic."""
@@ -223,33 +210,33 @@ class PromissoryNoteDraft(Serializable):
         self.checks = []
         self.transaction_date = date.today()
 
-    def __eq__(self, other):
-        """Tests if this draft note equals another draft note."""
-        return self.__getstate__() == other.__getstate__()
+    def __get_unsigned_bytes(self):
+        unsigned = string_to_bytes(self.seller_public_key.export_key(format='PEM')) + \
+                   uint64_to_bytes(self.identifier) + \
+                   uint32_to_bytes(self.value)
 
-    def __hash__(self):
-        """Computes a hash value for this draft."""
-        return hash(frozenset(self.__getstate__().items()))
+        for check, amount in self.checks:
+            unsigned += bytestring_to_bytes(check.to_bytes()) + uint32_to_bytes(amount)
 
-    def __getstate__(self):
-        """Retrieves the state of this object for serialization."""
-        # Apparently the public key used by the pycrypto module wasn't supported by pickle,
-        # but it was possible to force the issue but using the key's built-in serialization
-        return {
-            'seller_public_key': self.seller_public_key.export_key(format='PEM'),
-            'identifier': self.identifier,
-            'value': self.value,
-            'checks': self.checks,
-            'transaction_date': self.transaction_date.strftime('%d%m%Y')
-        }
+        return unsigned
 
-    def __setstate__(self, state):
-        """Sets the state of this object for deserialization."""
-        self.seller_public_key = ECC.import_key(state['seller_public_key'])
-        self.identifier = state['identifier']
-        self.value = state['value']
-        self.checks = state['checks']
-        self.transaction_date = datetime.strptime(state['transaction_date'], '%d%m%Y').date()
+    def to_bytes(self):
+        """Produces a byte string that represents this draft."""
+        return self.__get_unsigned_bytes()
+
+    @staticmethod
+    def from_bytes(draft_bytes):
+        """Reads a draft from a byte string."""
+        seller_public_key, draft_bytes = string_from_bytes(draft_bytes)
+        identifier, draft_bytes = uint64_from_bytes(draft_bytes)
+        value, draft_bytes = uint32_from_bytes(draft_bytes)
+        draft = PromissoryNoteDraft(ECC.import_key(seller_public_key), identifier, value)
+        while draft_bytes:
+            check, draft_bytes = bytestring_from_bytes(draft_bytes)
+            amount, draft_bytes = uint32_from_bytes(draft_bytes)
+            draft.checks.append((Check.from_bytes(check), amount))
+
+        return draft
 
     @property
     def total_check_value(self):
@@ -274,7 +261,6 @@ class PromissoryNoteDraft(Serializable):
         assert check.value >= amount
         self.checks.append((check, amount))
 
-    # TODO: Should transaction date be include din the JSON representation? See also 'PromissoryNote'
     def to_json(self):
         return {
             'Identifier': self.identifier,
@@ -295,6 +281,22 @@ class PromissoryNote(Serializable):
         self.draft_bytes = draft_bytes
         self.seller_signature = seller_signature
         self.buyer_signature = buyer_signature
+
+    def __get_unsigned_bytes(self):
+        return bytestring_to_bytes(self.draft_bytes)
+
+    def to_bytes(self):
+        """Produces a byte string that represents this promissory note."""
+        return self.__get_unsigned_bytes() + \
+            bytestring_to_bytes(self.seller_signature) + bytestring_to_bytes(self.buyer_signature)
+
+    @staticmethod
+    def from_bytes(note_bytes):
+        """Reads a promissory note from a byte string."""
+        draft_bytes, note_bytes = bytestring_from_bytes(note_bytes)
+        seller_signature, note_bytes = bytestring_from_bytes(note_bytes)
+        buyer_signature, note_bytes = bytestring_from_bytes(note_bytes)
+        return PromissoryNote(draft_bytes, seller_signature, buyer_signature)
 
     @property
     def draft(self):
@@ -336,19 +338,37 @@ class PromissoryNote(Serializable):
         Returns a Boolean reflecting the truth of this property"""
         return self.draft.transaction_date == date.today()
 
-    def sign_seller(self, private_key):
-        """Signs this promissory note using the seller's private key."""
-        self.seller_signature = sign_DSS(self.draft_bytes, private_key)
+    @staticmethod
+    def sign_seller(note_bytes, private_key):
+        """Signs a promissory note using the seller's private key
+        and returns the byte representation of the note."""
+        note = PromissoryNote.from_bytes(note_bytes)
+        seller_signature = sign_DSS(note.draft.to_bytes(), private_key)
+        note.sign_with_seller_signature(seller_signature)
+        return note.to_bytes()
 
-    def sign_buyer(self, private_key):
-        """Signs this promissory note using the buyer's private key."""
-        self.buyer_signature = sign_DSS(
-            self.draft_bytes + self.seller_signature, private_key)
+    @staticmethod
+    def sign_buyer(note_bytes, private_key):
+        """Signs a promissory note using the buyer's private key
+        and returns the byte representation of the note."""
+        note = PromissoryNote.from_bytes(note_bytes)
+        buyer_signature = sign_DSS(
+            note.draft.to_bytes() + note.seller_signature, private_key)
+        note.sign_with_buyer_signature(buyer_signature)
+        return note.to_bytes()
+
+    def sign_with_seller_signature(self, seller_signature):
+        """Sets the seller signature of this promissory note."""
+        self.seller_signature = seller_signature
+
+    def sign_with_buyer_signature(self, buyer_signature):
+        """Sets the buyer signature of this promissory note."""
+        self.buyer_signature = buyer_signature
 
     def to_json(self):
         return {
-            'Seller signature': str(self.seller_signature),
-            'Buyer Signature': str(self.buyer_signature)
+            'Seller signature': ''.join('{:02x}'.format(x) for x in self.seller_signature),
+            'Buyer Signature': ''.join('{:02x}'.format(x) for x in self.buyer_signature)
         }
 
     def __str__(self) -> str:

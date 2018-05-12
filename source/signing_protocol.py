@@ -5,6 +5,11 @@ from promissory_note import PromissoryNote
 bank_repository = []
 
 
+class OfflineException(Exception):
+    def __init__(self, *args, **kwargs):
+        Exception.__init__(self, *args, **kwargs)
+
+
 def register_bank(bank):
     bank_repository.append(bank)
 
@@ -25,8 +30,8 @@ def create_promissory_note(buyer_device, seller_device, amount):
 
     # Sign the damn thing already.
     note = PromissoryNote(draft.to_bytes())
-    note.sign_seller(seller_device.private_key)
-    note.sign_buyer(buyer_device.private_key)
+    note = PromissoryNote.from_bytes(PromissoryNote.sign_seller(note.to_bytes(), seller_device.private_key))
+    note = PromissoryNote.from_bytes(PromissoryNote.sign_buyer(note.to_bytes(), buyer_device.private_key))
 
     return note
 
@@ -51,8 +56,13 @@ def verify_promissory_note(promissory_note):
                          "list values exceeding their respective maximum values.")
 
 
-def transfer(promissory_note, buyer_device):
+def transfer(promissory_note, buyer_device, seller_device):
     """Transfer a promissory note from a buyer device to the banks."""
+
+    # A transfer can only take place when the seller is online
+    if not seller_device.internet_connection:
+        raise OfflineException("Seller device is offline.")
+
     # Send it to the bank; well, all the banks...
     for bank in filter(lambda b: b.public_key in buyer_device.bank_keys.values(), known_banks()):
         bank.redeem_promissory_note(promissory_note)
@@ -64,4 +74,4 @@ def perform_transaction(buyer_device, seller_device, amount):
     # Create and sign a note.
     note = create_promissory_note(buyer_device, seller_device, amount)
     verify_promissory_note(note)
-    transfer(note, buyer_device)
+    transfer(note, buyer_device, seller_device)
