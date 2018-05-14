@@ -5,7 +5,7 @@ import json
 from collections import deque, defaultdict
 from Crypto.PublicKey import ECC
 
-from promissory_note import PromissoryNoteDraft, sign_DSS, verify_DSS, string_to_bytes
+from promissory_note import PromissoryNoteDraft, sign_DSS, verify_DSS, string_to_bytes, uint32_to_bytes, uint64_to_bytes
 from datetime import date, datetime, timedelta
 
 class AccountHolderDevice(object):
@@ -222,18 +222,22 @@ class AccountHolderDevice(object):
     def __str__(self) -> str:
         return json.dumps(self.to_json(), indent=2)
 class AHD_certificate:
-    def __init__(self, message, AHD_public_key, bankprivatekey, valid_until):
+    def __get_unsigned_bytes(self):
+        return string_to_bytes(self.AHD_public_key) + \
+        string_to_bytes(self.message) + \
+        string_to_bytes(self.valid_until)
+    def __init__(self, message, AHD_public_key, bankprivatekey, valid_until, bankID):
         if not all(x.isalpha() or x.isspace() for x in message):
             raise ValueError("invalid message")
         if not isinstance(valid_until, datetime):
             raise ValueError("invalid end time")
+
+        self.AHD_public_key = AHD_public_key
+        self.bankID = bankID
         self.message = message
-        self.valid_until = valid_until
-        tosign = message + ", valid until: " + AHD_public_key + valid_until.strftime("%Y-%m-%d %H:%M:%S.%f")
-        tosign = string_to_bytes(tosign)
-        self.signature = sign_DSS(tosign, bankprivatekey)
+        self.valid_until = valid_until.strftime('%d%m%Y')
+        self.signature = sign_DSS(self.__get_unsigned_bytes(), bankprivatekey)
     def validate(self, AHD_public_key, bankpublickey):
-        tosign = self.message + ", valid until: " + AHD_public_key + self.valid_until.strftime("%Y-%m-%d %H:%M:%S.%f")
-        tosign = string_to_bytes(tosign)
-        if self.valid_until < datetime.now(): return False
-        return verify_DSS(tosign, self.signature, bankpublickey)
+        if datetime.strptime(self.valid_until, '%d%m%Y') < datetime.now(): return False
+        if AHD_public_key != self.AHD_public_key: return False
+        return verify_DSS(self.__get_unsigned_bytes(), self.signature, bankpublickey)

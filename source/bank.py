@@ -207,7 +207,7 @@ class Bank(object):
         except ValueError:
             future_date = future_date + (date(future_date.year + 1, 1, 1) - date(future_date.year, 1, 1))
 
-        cert = (AHD_certificate(account.owner.name, exported_key, self.private_key, future_date))
+        cert = AHD_certificate(account.owner.name, exported_key, self.private_key, future_date, self.identifier)
 
         return device_data, cert
 

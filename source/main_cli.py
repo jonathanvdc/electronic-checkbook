@@ -318,10 +318,12 @@ class MainPrompt(Cmd):
         buyer_device = \
             self._get_choice_("ahd", self.ahds(), "Which account holder device is the buyer?")
 
-        if not seller_device.cert.validate(seller_device.public_key.export_key(format='PEM'), list(seller_device.bank_keys.values())[0]):
+        if not seller_device.cert.validate(seller_device.public_key.export_key(format='PEM'), seller_device.get_bank_public_key(seller_device.cert.bankID)):
             raise ValueError("Invalid certificate")
+        else:
+            print("Validated certificate\n\n")
 
-        print("you are about to transfer money to: " + seller_device.cert.message + "\n")
+        print("You are about to transfer money to: " + seller_device.cert.message + "\n")
 
         answer = input("Do you want to continue? (y/n)")
         if answer != "y":
