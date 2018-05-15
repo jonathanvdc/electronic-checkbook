@@ -68,6 +68,18 @@ def transfer(promissory_note, buyer_device, seller_device):
         bank.redeem_promissory_note(promissory_note)
 
 
+def hand_in(promissory_note, buyer_device):
+    """Transfer a promissory note from a buyer device to the banks."""
+
+    # A hand-in can only take place when the buyer is online
+    if not buyer_device.internet_connection:
+        raise OfflineException("buyer device is offline.")
+
+    # Send it to the bank; well, all the banks...
+    for bank in filter(lambda b: b.public_key in buyer_device.bank_keys.values(), known_banks()):
+        bank.hand_in_promissory_note(promissory_note)
+
+
 def perform_transaction(buyer_device, seller_device, amount):
     """Transfers a particular amount of money from one account holder
        (the "buyer") to another (the "seller")."""
