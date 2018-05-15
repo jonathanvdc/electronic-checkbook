@@ -311,8 +311,8 @@ class Bank(object):
         assert note.is_buyer_signature_authentic
         assert note.is_seller_signature_authentic
 
-        relevant_checks = filter(lambda c: c[0].bank_id == self.identifier,
-                                 note.draft.checks)
+        relevant_checks = list(filter(lambda c: c[0].bank_id == self.identifier,
+                                 note.draft.checks))
 
         # Checks if the note's transaction date falls in the current month, and thus affects this month's running spending cap
         affects_cap = note.draft.affects_monthly_cap

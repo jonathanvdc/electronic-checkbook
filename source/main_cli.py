@@ -12,7 +12,7 @@ from account_holder_device import AccountHolderDevice
 from bank import Bank, Account
 from promissory_note import PromissoryNote
 from signing_protocol import register_bank, create_promissory_note, verify_promissory_note, transfer, \
-    known_banks, OfflineException
+    known_banks, OfflineException, hand_in
 
 
 class CreationException(Exception):
@@ -96,10 +96,10 @@ class MainPrompt(Cmd):
             creator = getattr(self, "create_" + param)
             result = creator()
         except AttributeError as e:
-            print("*** " + str(e))
+            self._print_exception_(e)
             return
         except CreationException as e:
-            print("*** " + str(e))
+            self._print_exception_(e)
             return
 
         if result:
@@ -159,7 +159,7 @@ class MainPrompt(Cmd):
 
             print(tabulate(table, headers="firstrow", showindex=True) + "\n")  # tablefmt="grid"
         except KeyError:
-            print("*** Incorrect input given.\n")
+            self._print_exception_("Incorrect input given.")
             self.do_help('list')
 
     def do_transaction(self, args):
@@ -175,15 +175,16 @@ class MainPrompt(Cmd):
             transfer(note, *self.promissory_notes[note][::-1])
             print("TRANSFER SUCCESSFUL\n")
         except OfflineException:
-            print("Promissory note was created, but not yet redeemed as no internet connection was available.\n" +
-                  "Please connect to the internet and redeem the promissory note.\n")
+            self._print_exception_(
+                "Promissory note was created, but not yet redeemed as no internet connection was available.\n" +
+                "Please connect to the internet and redeem the promissory note.")
             return
         except Exception as e:
-            print("*** " + str(e))
+            self._print_exception_(e)
             return
 
     def do_transfer(self, args):
-        """Transfer a promissory note from a buyer device to the banks.
+        """Transfer a promissory note from a seller device to the banks.
 
         Usage: transfer
         """
@@ -194,11 +195,31 @@ class MainPrompt(Cmd):
             transfer(pn, self.promissory_notes[pn][1], self.promissory_notes[pn][0])
             print("TRANSFER SUCCESSFUL\n")
         except OfflineException:
-            print("Promissory note was created, but not yet redeemed as no internet connection was available.\n" +
-                  "Please connect to the internet and redeem the promissory note.\n")
+            self._print_exception_(
+                "Promissory note was created, but not yet redeemed as no internet connection was available.\n" +
+                "Please connect to the internet and redeem the promissory note.")
             return
         except Exception as e:
-            print("*** " + str(e))
+            self._print_exception_(e)
+            return
+
+    def do_hand_in(self, args):
+        """Hand in given promissory note as the buyer to the banks.
+
+        Usage: transfer
+        """
+
+        try:
+            pn = \
+                self._get_choice_("pn", list(self.promissory_notes.keys()),
+                                  "Which promissory note needs to be handed in?")
+            hand_in(pn, self.promissory_notes[pn][1])
+            print("SUCCESSFULLY HANDED IN PROMISSORY NOTE\n")
+        except OfflineException:
+            self._print_exception_("No internet connection available.")
+            return
+        except Exception as e:
+            self._print_exception_(e)
             return
 
     def do_verify(self, args):
@@ -213,10 +234,20 @@ class MainPrompt(Cmd):
         try:
             verify_promissory_note(pn)
         except Exception as e:
-            print("*** " + str(e))
+            self._print_exception_(e)
             return
 
         print("Promissory note is correct.\n")
+
+    def do_time_travel(self, args):
+        """Travel 1 month into the future, i.e. reset all monthly caps on all devices
+
+        Usage: time_travel
+        """
+        for bank in known_banks():
+            bank.reset_monthly_spending_caps()
+
+        print("Successfully travelled one month into the future.\n")
 
     def do_EOF(self, args):
         """Quit the application by pressing 'CTRL + D' or by typing 'EOF',
@@ -285,13 +316,16 @@ class MainPrompt(Cmd):
         result = AccountHolderDevice()
         result.register_bank(bank.identifier, bank.public_key)
 
-        limit = self._parse_type_("what is the spending limit for this ahd?", int)
+        limit = self._parse_type_("what is the monthly spending limit for this ahd?", int)
         if limit:
-            _, cert = bank.add_device(account, result.public_key, cap=limit)
+            device_data, cert = bank.add_device(account, result.public_key, monthly_cap=limit)
         else:
-            _, cert = bank.add_device(account, result.public_key)
+            device_data, cert = bank.add_device(account, result.public_key)
+        device_data.reset_monthly_spending_cap()
+
         result.set_cert(cert)
         account.owner.add_ahd(account, result)
+
         return result
 
     def create_check(self):
@@ -307,7 +341,7 @@ class MainPrompt(Cmd):
             result = bank.issue_check(device.public_key, amount)
             device.add_unspent_check(result)
         except Exception as e:
-            print("*** " + str(e))
+            self._print_exception_(e)
             return
 
         return result
@@ -318,20 +352,19 @@ class MainPrompt(Cmd):
         buyer_device = \
             self._get_choice_("ahd", self.ahds(), "Which account holder device is the buyer?")
 
-        if not seller_device.cert.validate(seller_device.public_key.export_key(format='PEM'), seller_device.get_bank_public_key(seller_device.cert.bankID)):
-            raise ValueError("Invalid certificate")
-        else:
-            print("Validated certificate\n\n")
-
-        print("You are about to transfer money to: " + seller_device.cert.message + "\n")
-
-        answer = input("Do you want to continue? (y/n)")
-        if answer != "y":
-            raise ValueError("Aborted")
-        amount = self._parse_type_("What amount?", int, lambda x: x > 0, value_required=True)
-
-        # TODO: maybe split this process (especially signing protocol) for demonstration purposes
         try:
+            if not seller_device.cert.validate(seller_device.public_key.export_key(format='PEM'), seller_device.get_bank_public_key(seller_device.cert.bankID)):
+                raise ValueError("Invalid certificate")
+            else:
+                print("Validated certificate\n\n")
+
+            print("You are about to transfer money to: " + seller_device.cert.message + "\n")
+
+            answer = input("Do you want to continue? (y/n)")
+            if answer != "y":
+                raise ValueError("Aborted")
+            amount = self._parse_type_("What amount?", int, lambda x: x > 0, value_required=True)
+
             draft = seller_device.draft_promissory_note(amount)
             print("PROMISSORY NOTE DRAFT CREATION SUCCESSFUL:\n{}\n".format(draft))
             # Have the buyer attach checks to it.
@@ -346,7 +379,7 @@ class MainPrompt(Cmd):
             self.promissory_notes[note] = (seller_device, buyer_device)
             return note
         except Exception as e:
-            print("*** " + str(e))
+            self._print_exception_(e)
             raise CreationException("Could not create promissory note")
 
     """
@@ -409,7 +442,7 @@ class MainPrompt(Cmd):
     def _check_len_arg_(self, fun_name, args, valid_amounts):
         args = shlex.split(args)
         if len(args) not in valid_amounts:
-            print("*** Incorrect amount of arguments provided.\n")
+            self._print_exception_("Incorrect amount of arguments provided.")
             self.do_help(fun_name)
             return False
 
@@ -447,13 +480,16 @@ class MainPrompt(Cmd):
                 value = collection[int(answer)]
                 break
             except ValueError:
-                print("*** Incorrect input given.\n")
+                self._print_exception_("Incorrect input given.")
                 continue
             except (IndexError, KeyError):
-                print("*** {} is not a valid choice.\n".format(answer))
+                self._print_exception_("{} is not a valid choice.".format(answer))
                 continue
 
         return value
+
+    def _print_exception_(self, e):
+        print("*** " + str(e) + "\n")
 
 
 if __name__ == '__main__':
