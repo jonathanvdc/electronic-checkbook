@@ -146,29 +146,29 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 		\item This fully-signed promissory note is subsequently sent to the seller.
 	\end{enumerate}
 
-	After going through the motions described above, both the seller and the buyer retain a copy of the fully-signed promissory note, which doubles as a receipt.
-	
-	Anything short of a fully-signed promissory note is null and void---the bank will not accept, e.g., an unsigned or partially-signed promissory note.
-	
 	\end{multicols}
 	\newpage
-    
-    \begin{landscape}
-    \thispagestyle{empty}
-    
-    	\begin{figure}
-        	\centering
-    	    \includegraphics[width=503pt]{img/signing_algorithm}
-            \caption{Signing Algorithm}
-            \label{fig:signing_algorithm}
-    	\end{figure}
-        
-        \vfill
-		\raisebox{1em}{\makebox[\linewidth]{\thepage}}
-    \end{landscape}
 	
-    \newpage
+	\begin{landscape}
+	\thispagestyle{empty}
+	
+	\begin{figure}
+		\centering
+		\includegraphics[width=503pt]{img/signing_algorithm}
+		\caption{Signing Algorithm}
+		\label{fig:signing_algorithm}
+	\end{figure}
+	
+	\vfill
+	\raisebox{1em}{\makebox[\linewidth]{\thepage}}
+	\end{landscape}
+	
+	\newpage
 	\begin{multicols}{2}
+
+	After going through the motions described by the signing algorithm, both the seller and the buyer retain a copy of the fully-signed promissory note, which doubles as a receipt.
+	
+	Anything short of a fully-signed promissory note is null and void---the bank will not accept, e.g., an unsigned or partially-signed promissory note.
 	
 	\subsubsection{Well-formedness}
 
@@ -239,7 +239,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 	
 	\subsection{Redeeming a promissory note as the buyer}
 	
-	Buyers should be able to pass their fully signed promissory notes to their bank to confirm their successful transactions with the bank. This allows the bank to update the client's unspent checks and monthly spending cap in advance of the sellers redeeming the respective notes so that the client can request new checks with their bank. Without this option, if a buyer uses for example a \$500 check for a \$10 transaction, the buyer will be locked out of \$490 he can't spend until the seller redeems the promissory note with the bank.
+	Buyers should be able to pass their fully signed promissory notes to their bank to confirm their successful transactions with the bank. This allows the bank to update the client's unspent checks and monthly spending cap in advance of the sellers redeeming the respective notes so that the client can request new checks with their bank. Without this option, if a buyer uses for example a \$500 check for a \$10 transaction, the buyer will be locked out of \$490 they can't spend until the seller redeems the promissory note with the bank.
 	
 	Additionally, checks have an expiration date that is tracked by the bank in case a seller never claims a promissory note and the buyer loses their copy of that same note. This extra measure prevents a buyer from being permanently locked out of spending parts of their money.
 	
