@@ -75,7 +75,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 		\item the public key of the corresponding account holder device,
 		\item an identification payload, usually the full name of the account holder or the name of a store; this can also contain more complex data such as the geographical coordinates of a store,
 		\item an expiration date, after which this certificate should no longer be considered valid,
-		\item a signature over all previous fields by the bank, and
+		\item a signature of all previous fields by the bank, and
 		\item the bank id of the issuing bank.
 	\end{itemize}
 
@@ -126,7 +126,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 	The creation of a fully signed promissory note consists of a number of steps. The steps below are illustrated by \autoref{fig:signing_algorithm}.
 	
 	\begin{enumerate}
-		\item The seller drafts a proto--promissory note that consists of the first fields of a promissory note: the seller's public key, a unique identifier for the promissory note, the amount of money to transfer and the transaction date.
+		\item The seller drafts a proto--promissory note that consists of the first fields of a promissory note: the seller's public key ($PU_{SELLER}$), a unique identifier for the promissory note, the amount of money to transfer and the transaction date.
 		
 		\item The seller sends the draft to the buyer along with a certificate for the seller's account holder device.
 		
@@ -167,7 +167,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 	After going through the motions described by the signing algorithm, both the seller and the buyer retain a copy of the fully-signed promissory note, which doubles as a receipt.
 	
-	Anything short of a fully-signed promissory note is null and void---the bank will not accept, e.g., an unsigned or partially-signed promissory note.
+	Anything short of a fully-signed promissory note is null and void---the bank will not accept an unsigned or partially-signed promissory note.
 	
 	\subsubsection{Well-formedness}
 
@@ -176,13 +176,13 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 	\begin{itemize}
 		\item all signatures must be verified against their public keys by each party,
 		\item the sum of the amounts of money specified by the checks must match the total amount on the promissory note,
-		\item the amount of money with which every check is tagged must not exceed the check's maximum value, and
+		\item the amount of money with which every check is tagged, must not exceed the check's maximum value, and
 		\item the note should not contain checks that expired before the transaction date timestamp.
 	\end{itemize}
 
-	Additionally, each party should also make sure that the other party doesn't (subtly or otherwise) change the promissory note halfway through the transaction. For example, the seller should check that the amount of money specified by the unsigned promissory note sent to them by the buyer matches the amount the seller originally specified.
+	Additionally, each party should also make sure that the other party does not (subtly or anyway else) change the promissory note halfway through the transaction. For example, the seller should check that the amount of money specified by the unsigned promissory note sent to them by the buyer matches the amount the seller originally specified.
 	
-	It is also important for both parties to confirm the correctness of the timestamp, as an incorrect timestamp can result in the note being unredeemable by the seller (note expired before it can even be sent to the bank), or the note being redeemable beyond the intended expiration date.
+	It is also important for both parties to confirm the correctness of the timestamp, as an incorrect timestamp can result in the note being unredeemable by the seller (note is expired before it can even be sent to the bank), or the note being redeemable beyond the intended expiration date.
 	
 	If the seller is online, then they must verify that the checks they receive have not been spent already. If they are offline, they cannot do so. See \autoref{sec:double-spending-checks} for a more thorough discussion of the double-spending problem.
 
@@ -224,7 +224,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 	\paragraph{Availability}
 
-	After signing a promissory note, the seller should be able to submit the fully signed promissory note to the bank. Hence, one might argue that the bank's servers should be available whenever the seller has an Internet connection. However, the protocol with which an account holder communicates with their bank is left to the bank to specify, so any availability requirements it raises are out of scope.
+	After signing a promissory note, the seller should be able to submit the fully signed promissory note to the bank. Hence, one might argue that the bank's servers should be available whenever the seller has an Internet connection. However, the protocol with which an account holder communicates with their bank is left to the bank to specify, so any availability requirements it raises, are out of scope.
 
 	\subsection{Redeeming a promissory note as the seller}
 
@@ -247,7 +247,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 	\subsection{Transferring checks}
 
-	On request from an account holder device, the bank can sign a fresh batch of checks that have a total value up to the account holder device's remaining monthly\footnote{As stated before, the exact timespan doesn't really matter. A month is used here for simplicity.} cap minus the total value of the account holder's preexisting unspent checks.
+	On request from an account holder device, the bank can sign a fresh batch of checks that have a total value up to the account holder device's remaining monthly\footnote{As stated before, the exact timespan does not really matter. A month is used here for simplicity.} cap minus the total value of the account holder's pre-existing unspent checks.
 
 	These checks are then transferred to the account holder device that requested them.
 
@@ -348,15 +348,15 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 	\section{Online and offline behavior}
 
-	The core signing algorithm is the same for both online and offline transactions, but what happens afterward differs slightly for sellers.
+	The core signing algorithm is the same for both online and offline transactions, but what happens afterwards differs slightly for sellers.
 
 	\paragraph{Seller is online}
 	
-	A seller that is online must always redeem the promissory note right after it's signed. It is in the interest of a seller to do so because it protects them against losing the promissory note. This is mostly likely accidental, but \autoref{sec:signed-promissory-note-is-lost} contains a description of how an attacker might purposefully delete a signed promissory note from a seller.
+	A seller that is online must always redeem the promissory note right after it is signed. It is in the interest of a seller to do so because it protects them against losing the promissory note. This is mostly likely accidental, but \autoref{sec:signed-promissory-note-is-lost} contains a description of how an attacker might purposefully delete a signed promissory note from a seller.
 
 	Additionally, sellers likely have an interest in obtaining payment sooner rather than later. Redeeming promissory notes immediately helps with that.
 
-	If the bank notices that a buyer is trying to double-spend a check, then the online transaction will be canceled and the bank will take further action. The specific measures a bank may take are briefly discussed in \autoref{sec:double-spending-checks}.
+	If the bank notices that a buyer is trying to double-spend a check, then the online transaction will be cancelled and the bank will take further action. The specific measures a bank may take are briefly discussed in \autoref{sec:double-spending-checks}.
 	
 	\paragraph{Seller is offline}
 	

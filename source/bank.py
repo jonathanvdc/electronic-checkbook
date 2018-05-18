@@ -231,7 +231,6 @@ class Bank(object):
     def issue_check(self, public_key, value):
         """Issues a check of a particular value for the device associated
            with the given public key."""
-        # TODO: error if public key doesn't exist within the bank
         account = self.get_account(public_key)
         data = account.get_device(public_key)
 
