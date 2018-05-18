@@ -63,9 +63,22 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 		\item a unique public (stored at the bank), private (stored on the device) key pair,
 		\item a monthly\footnote{Any other sufficiently large timespan would work just as well here, but monthly seems to be the conventional choice here.} spending cap (stored both on the device and at the bank), and
 		\item a number of unspent checks, the \emph{checkbook} (stored on the device).
+		\item an authentication certificate to authenticate the owner of the device.
 	\end{itemize}
 
 	It is worth clarifying that an account holder device is a \emph{logical} device that may, but does not have to, correspond to a physical device. For example, a phone that is authorized for $n$ different accounts acts as $n$ different account holder devices.
+
+	\paragraph{Authentication certificate}
+	
+	Each Account holder device has an authentication certificate used to verify the identity of public key. The certificate contains
+	\begin{itemize}
+		\item the public key of the corresponding account holder device,
+		\item an identification payload, usually the full name of the owner/store but this can also contain more complex data such as the coordinates of a store,
+		\item an expiration date, after which this certificate should no longer be considered valid,
+		\item a signiture over all previous fields by the bank,
+		\item the bank id of issuing bank
+	\end{itemize}
+
 
 	\paragraph{Checks}
 	
