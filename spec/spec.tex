@@ -52,7 +52,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 	
 	\paragraph{Account holders} An account holder is someone who can spend money using this payment system.
 	
-	\paragraph{The bank}
+	\paragraph{Banks}
 	
 	An account holder's money is stored at the bank, which serves as a trusted third party. Money is never transferred directly between devices---the bank completes all transactions. Additionally, each bank has a unique public (stored on all account holder devices), private (stored only at the bank) key pair used for signing checks.
 	
@@ -68,7 +68,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 	It is worth clarifying that an account holder device is a \emph{logical} device that may, but does not have to, correspond to a physical device. For example, a phone that is authorized for $n$ different accounts acts as $n$ different account holder devices.
 
-	\paragraph{Authentication certificate}
+	\paragraph{Authentication certificates}
 	
 	Each account holder device has an authentication certificate used to verify the identity of the device's public key. Such a certificate contains
 	\begin{itemize}
@@ -273,9 +273,11 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 		
 		\item \textbf{Signatures.} A signature is a special kind of length-prefixed string. The contents of a signature are obtained by first taking the SHA3-256 hash of the data to which the signature pertains and then applying the FIPS 186-4 (EC)DSA algorithm to that hash \cite{fips-202-sha3, fips-186-4-dss}.
 		
+		\item \textbf{Public keys.} A public key field is a length-prefixed UTF-8 string that contains a public key in the PEM format \cite{rfc-pem}.
+
 		\item \textbf{Lists.} A list of items, encoded separately and placed back-to-back.
 		
-		\item \textbf{Date.} A date represented as a length-prefixed string in the \texttt{ddmmYYYY} format.
+		\item \textbf{Dates.} A date represented as a length-prefixed string in the \texttt{ddmmYYYY} format.
 		
 	\end{itemize}
 
@@ -295,7 +297,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 	\begin{description}
 		\item[\textbf{\texttt{bank\_id}} (32-bit integer)] A unique identifier for the bank that issued the check.
 
-		\item[\texttt{owner\_public\_key} (length-prefixed string)] The public key of the account holder device for which the check was issued, encoded as a UTF-8 string in the PEM format \cite{rfc-pem}.
+		\item[\texttt{owner\_public\_key} (public key)] The public key of the account holder device for which the check was issued.
 
 		\item[\texttt{value} (32-bit  integer)] The maximum amount of money the check can be used for.
 
@@ -308,27 +310,41 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 	\subsection{Promissory notes}
  
- The actual promissory notes, which are encoded and decoded on multiple occasions during the signing process, can be subdivided in two categories: the draft and the actual promissory note. However, as the draft is actually a nascent promissory note, this subdivision is in fact artificial. A promissory note is therefore encoded as a concatenation of the following fields:
+ 	The actual promissory notes, which are encoded and decoded on multiple occasions during the signing process, can be subdivided in two categories: the draft and the actual promissory note. However, as the draft is actually a nascent promissory note, this subdivision is in fact artificial. A promissory note is therefore encoded as a concatenation of the following fields:
  
-	 \begin{description}
-	 	\item[\textbf{\texttt{draft\_size} (32-bit integer)}] The size of the promissory note's draft section, in bytes. The draft section consists of fields \texttt{seller\_public\_key}, \texttt{identifier}, \texttt{value} and \texttt{checks}.
-	 	
-		\item[\textbf{\texttt{seller\_public\_key}} (length-prefixed string)]  The public key of the account holder device of the seller, encoded as a UTF-8 string in the PEM format \cite{rfc-pem}.
-
+	\begin{description}
+		\item[\textbf{\texttt{draft\_size} (32-bit integer)}] The size of the promissory note's draft section, in bytes. The draft section consists of fields \texttt{seller\_public\_key}, \texttt{identifier}, \texttt{value} and \texttt{checks}.
+		
+		\item[\textbf{\texttt{seller\_public\_key}} (public key)]  The public key of the account holder device of the seller.
+		
 		\item[\texttt{identifier} (64-bit integer)] An identifier that uniquely defines the promissory note.
-
+		
 		\item[\texttt{value} (32-bit integer)] The total amount of money transferred by the note.
 		
 		\item[\texttt{transaction\_date} (date)] The date on which the note was drafted.
-
+		
 		\item[\texttt{checks} (list of check--32-bit integer pairs)] A list of pairs. Each pair consists of a length-prefixed encoded check---as always, the length prefix is a 32-bit integer---followed by a 32-bit integer that specifies the amount of money to spend using the aforementioned check.
-
+		
 		\item[\texttt{seller\_signature} (signature)] A signature of all aforementioned fields, signed by the seller device using its private key.
 		
 		\item[\texttt{buyer\_signature} (signature)] A signature of all aforementioned fields, signed by the buyer device using its private key.
 	\end{description}
- 
-  
+
+	\subsection{Authentication certificates}
+
+  	Authentication certificates for account holder devices are encoded as the concatenation of the following fields:
+
+	\begin{description}
+		\item[\textbf{\texttt{device\_public\_key} (public key)}] The public key of the account holder device that is certified.
+		
+		\item[\textbf{\texttt{payload} (length-prefixed string)}] The identification payload of the authentication certificate.
+		
+		\item[\textbf{\texttt{expiration\_date} (date)}] The expiration date of the certificate.
+		
+		\item[\textbf{\texttt{signature}} (signature)] A signature of the aforementioned fields created by the bank's private key.
+		
+		\item[\textbf{\texttt{bank\_id}} (32-bit integer)] A unique identifier for the bank that issued the certificate.
+	\end{description}
 
 	\section{Online and offline behavior}
 

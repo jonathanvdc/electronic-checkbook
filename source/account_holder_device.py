@@ -253,7 +253,7 @@ class AccountHolderDevice(object):
 class DeviceCertificate:
     """A certificate that authenticates an account holder device."""
 
-    def __init__(self, message, AHD_public_key, bankprivatekey, valid_until,
+    def __init__(self, message, AHD_public_key, bank_private_key, valid_until,
                  bankID):
         if not all(x.isalpha() or x.isspace() for x in message):
             raise ValueError("invalid message")
@@ -264,12 +264,13 @@ class DeviceCertificate:
         self.bankID = bankID
         self.message = message
         self.valid_until = valid_until.strftime('%d%m%Y')
-        self.signature = sign_DSS(self.__get_unsigned_bytes(), bankprivatekey)
+        self.signature = sign_DSS(self.__get_unsigned_bytes(),
+                                  bank_private_key)
 
     def __get_unsigned_bytes(self):
         return string_to_bytes(self.AHD_public_key) + \
-        string_to_bytes(self.message) + \
-        string_to_bytes(self.valid_until)
+            string_to_bytes(self.message) + \
+            string_to_bytes(self.valid_until)
 
     def validate(self, AHD_public_key, bank_public_key):
         if datetime.strptime(self.valid_until, '%d%m%Y') < datetime.now():
