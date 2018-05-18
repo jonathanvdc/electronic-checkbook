@@ -74,10 +74,10 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 	\begin{itemize}
 		\item a unique identifier for the bank that issued the check,
 		\item the public key of the account holder device for which the check was issued,
-		\item the check's value, that is, the maximum amount of money the check can be used for, \todo{include time stamps to indicate when check is valid}
-		\item a number that uniquely identifies the check within the space of all checks issued for the device---this can be a sequence number or a random number---and
-		\item a signature of the above produced by the private key of the bank that issued the check. \todo{Which signature algorithm?}
-		\item an expiration date. Expired checks can no longer be used to make promissory notes.
+		\item the check's value, that is, the maximum amount of money the check can be used for,
+		\item a number that uniquely identifies the check within the space of all checks issued for the device; this can be a sequence number or a random number,
+		\item an expiration date. Expired checks can no longer be used to make promissory notes, and
+		\item a signature of the above produced by the private key of the bank that issued the check.
 	\end{itemize}
 
 	The number of checks is such that the total value of all checks on an account holder's device never exceeds the spending cap for that device.
@@ -380,7 +380,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 	If a buyer does double-spend a check, then this will be discovered by the bank when the promissory note containing the doubly-spent check is redeemed.
 
-	\emph{It is clear at this point that the buyer has tried to bamboozle the bank---and the seller.} \todo{maybe also create a blacklist of known bad actors?} More importantly, the bank knows exactly who the buyer is.
+	\emph{It is clear at this point that the buyer has tried to bamboozle the bank---and the seller.} More importantly, the bank knows exactly who the buyer is.
 
 	Once the bank notices that a buyer is a bad actor, they should still pay the seller the amount due on the promissory note. Otherwise sellers would not be able to trust the system, hindering adoption.
 	
