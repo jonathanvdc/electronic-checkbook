@@ -277,7 +277,7 @@ class MainPrompt(Cmd):
     """
 
     def create_bank(self):
-        result = Bank(len(known_banks()))  # TODO: optional parameters?
+        result = Bank(len(known_banks()))
         register_bank(result)
         return result
 

@@ -104,7 +104,6 @@ class AccountHolderDevice(object):
             return
         if draft.value < 0:
             raise ValueError
-        # TODO: refactoren
         remaining_value = draft.value
         # estimate the maximum total value of checks that will be used in this draft
         max_spending = int(math.ceil(remaining_value + remaining_value * self.max_overcharge))
@@ -153,8 +152,6 @@ class AccountHolderDevice(object):
             # remove values that are too low.
             m = m[remaining_value:]
             # calculate a score for each of the check combinations
-            # TODO: it might be better to use a better scoring function:
-            #       when low on low value checks => using less checks becomes more important
             m = [((sum(x[0]) * biggest_unit - draft.value) + len(x[0]) * self.check_punishment, x) for x in m if
                  x is not None]
             remaining_value = draft.value
