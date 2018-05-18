@@ -5,7 +5,7 @@ import json
 from Crypto.PublicKey import ECC
 from promissory_note import Check
 from signing_protocol import known_banks
-from account_holder_device import AHD_certificate
+from account_holder_device import DeviceCertificate
 from datetime import date, datetime, timedelta
 
 CERT_EXPIRATION = 365
@@ -205,7 +205,7 @@ class Bank(object):
         account.devices[exported_key] = device_data
 
         future_date = datetime.now() + timedelta(days =CERT_EXPIRATION)
-        cert = AHD_certificate(account.owner.name, exported_key, self.private_key, future_date, self.identifier)
+        cert = DeviceCertificate(account.owner.name, exported_key, self.private_key, future_date, self.identifier)
 
         return device_data, cert
 
