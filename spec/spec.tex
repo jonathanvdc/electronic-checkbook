@@ -368,9 +368,9 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 		\item The attacker uses a property of the signing algorithm to generate a signed check from one or more existing checks. This is mitigated by the signature algorithm as described in \autoref{sec:data-types} and \autoref{sec:key-types}.
 	\end{enumerate}
 
-	\subsubsection{No seller authentication when buyer is offline} \label{sec:lack-of-seller-authentication}
-
-	The identity of a seller cannot be authenticated when the buyer is offline. This is not a real problem because a promissory note signed by an inauthentic seller is worth nothing---the bank will not redeem it. So it is decidedly against the seller's interests to use a public, private key pair that is not tied to their account.
+	\subsubsection{Impersonation of the seller}
+	
+	An attacker could try to impersonate the seller with a man in the middle attack. However the buyer can verify the recipient of the transaction, by comparing the public key of the promissory note to the authentication certificate, and verifying that the identification payload is correct. 
 	
 	\subsubsection{Theft of promissory notes}
 
