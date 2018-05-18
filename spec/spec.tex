@@ -126,7 +126,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 	The creation of a fully signed promissory note consists of a number of steps. The steps below are illustrated by \autoref{fig:signing_algorithm}.
 	
 	\begin{enumerate}
-		\item The seller drafts a proto--promissory note that consists of the first fields of a promissory note: the seller's public key ($PU_{SELLER}$), a unique identifier for the promissory note, the amount of money to transfer and the transaction date.
+		\item The seller drafts a proto--promissory note that consists of the first fields of a promissory note: the seller's public key, a unique identifier for the promissory note, the amount of money to transfer and the transaction date.
 		
 		\item The seller sends the draft to the buyer along with the seller's certificate.
 		
@@ -180,7 +180,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 		\item the note should not contain checks that expired before the transaction date timestamp.
 	\end{itemize}
 
-	Additionally, each party should also make sure that the other party does not (subtly or anyway else) change the promissory note halfway through the transaction. For example, the seller should check that the amount of money specified by the unsigned promissory note sent to them by the buyer matches the amount the seller originally specified.
+	Additionally, each party should also make sure that the other party does not (subtly or otherwise) change the promissory note halfway through the transaction. For example, the seller should check that the amount of money specified by the unsigned promissory note sent to them by the buyer matches the amount the seller originally specified.
 	
 	It is also important for both parties to confirm the correctness of the timestamp, as an incorrect timestamp can result in the note being unredeemable by the seller (note is expired before it can even be sent to the bank), or the note being redeemable beyond the intended expiration date.
 	
@@ -224,7 +224,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 	\paragraph{Availability}
 
-	After signing a promissory note, the seller should be able to submit the fully signed promissory note to the bank. Hence, one might argue that the bank's servers should be available whenever the seller has an Internet connection. However, the protocol with which an account holder communicates with their bank is left to the bank to specify, so any availability requirements it raises, are out of scope.
+	After signing a promissory note, the seller should be able to submit the fully signed promissory note to the bank. Hence, one might argue that the bank's servers should be available whenever the seller has an Internet connection. However, the protocol with which an account holder communicates with their bank is left to the bank to specify, so any availability requirements it raises are out of scope.
 
 	\subsection{Redeeming a promissory note as the seller}
 
@@ -348,7 +348,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 	\section{Online and offline behavior}
 
-	The core signing algorithm is the same for both online and offline transactions, but what happens afterwards differs slightly for sellers.
+	The core signing algorithm is the same for both online and offline transactions, but what happens afterward differs slightly for sellers.
 
 	\paragraph{Seller is online}
 	
@@ -356,7 +356,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 	Additionally, sellers likely have an interest in obtaining payment sooner rather than later. Redeeming promissory notes immediately helps with that.
 
-	If the bank notices that a buyer is trying to double-spend a check, then the online transaction will be cancelled and the bank will take further action. The specific measures a bank may take are briefly discussed in \autoref{sec:double-spending-checks}.
+	If the bank notices that a buyer is trying to double-spend a check, then the online transaction will be canceled and the bank will take further action. The specific measures a bank may take are briefly discussed in \autoref{sec:double-spending-checks}.
 	
 	\paragraph{Seller is offline}
 	
