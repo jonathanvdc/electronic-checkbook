@@ -197,10 +197,6 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 	\paragraph{Non-repudiation}
 	
 	Both the seller and the buyer sign the promissory note with their private key, so neither party can claim that they did not assent to the transaction.
-	
-	\paragraph{Entity authentication}
-
-	Sellers can authenticate themselves because they can present buyers with a bank-signed certificate tying their identity to their public key.
 
 	\paragraph{Data-origin authentication}
 	
@@ -211,6 +207,10 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 	
 		\item the origin of the fully-signed promissory note can also be verified: it is signed by the buyer and contains the buyer's public key---this information is stored in the checks, which can be verified as per the previous bullet.
 	\end{itemize}
+
+	\paragraph{Entity authentication}
+
+	Sellers can authenticate themselves because they can present buyers with a bank-signed certificate tying their identity to their public key.
 
 	\subsubsection{Non-goals}
 
@@ -230,14 +230,15 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 	To redeem a promissory note, the seller sends it to their bank. The bank verifies the promissory note's authenticity and transfers the amount specified by the promissory note from the buyer's account to the seller's \emph{if this is the first time that the promissory note is redeemed.} Trying to redeem the same promissory note twice does nothing.
 	
-	Furthermore, promissory notes are no longer valid X days after the included timestamp. If a seller tries to redeem the note in this scenario, the debt is instead cleared from the buyer's account and, if applicable\footnote{See, Redeeming a promissory note as the buyer}, the buyer's monthly cap is restored to reflect the transaction now being declared void.
+	Furthermore, promissory notes are no longer valid X days after the included timestamp. If a seller tries to redeem the note in this scenario, the debt is instead cleared from the buyer's account and, if applicable\footnote{See \autoref{sec:redeeming-promissory-note-as-buyer}.}, the buyer's monthly cap is restored to reflect the transaction now being declared void.
 
-	The exact protocol used by the seller and the bank to redeem promissory notes is up to the bank to specify or implement. Similarly, the protocol used by banks to negotiate a wire transfer is not specified here either.
+	The exact protocol used by the seller and the bank to redeem promissory notes is up to the bank to specify and implement. Similarly, the protocol used by banks to negotiate a wire transfer is not specified here either.
 
 	It may be desirable to transfer promissory notes over a secure connection to prevent eavesdropping, but that is not necessary to make the payment system work. The signatures on a promissory note ensure that the note cannot be tampered with.
 	
 	\subsection{Redeeming a promissory note as the buyer}
-	
+	\label{sec:redeeming-promissory-note-as-buyer}
+
 	Buyers should be able to pass their fully signed promissory notes to their bank to confirm their successful transactions with the bank. This allows the bank to update the client's unspent checks and monthly spending cap in advance of the sellers redeeming the respective notes so that the client can request new checks with their bank. Without this option, if a buyer uses for example a \$500 check for a \$10 transaction, the buyer will be locked out of \$490 they can't spend until the seller redeems the promissory note with the bank.
 	
 	Additionally, checks have an expiration date that is tracked by the bank in case a seller never claims a promissory note and the buyer loses their copy of that same note. This extra measure prevents a buyer from being permanently locked out of spending parts of their money.
@@ -246,11 +247,11 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 	\subsection{Transferring checks}
 
-	At the start of each month\footnote{As stated before, the exact timespan doesn't really matter. A month is used here for simplicity.}, the bank signs a fresh batch of checks that have a total value equal to the account holder device's cap minus the total value of the user's.
+	On request from an account holder device, the bank can sign a fresh batch of checks that have a total value up to the account holder device's remaining monthly\footnote{As stated before, the exact timespan doesn't really matter. A month is used here for simplicity.} cap minus the total value of the account holder's preexisting unspent checks.
 
-	An account holder can send a request to the bank for these newly-generated checks.
+	These checks are then transferred to the account holder device that requested them.
 
-	The protocol via which the account holder requests their new batch of checks and the bank transfers the checks is left up to the bank to specify as it is does not touch on the interaction between account holders.
+	The protocol via which the account holder requests and accepts their new batch of checks is left up to the bank to specify as it is does not touch on the interaction between account holders.
 	
 	\section{Encodings}
 	
@@ -268,7 +269,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 	\begin{itemize}
 		\item \textbf{$k$-bit integers.} These are stored in little-endian byte order. Unless explicitly stated otherwise, all integers in this section are unsigned.
 		
-		\item \textbf{Length-prefixed strings.} A length-prefixed string consists of a 32-bit unsigned integer followed by $n$ bytes, where $n$ is the integer prefix.
+		\item \textbf{Length-prefixed strings.} A length-prefixed string consists of a 32-bit unsigned integer followed by $n$ bytes, where $n$ is the value of the length prefix.
 		
 		\item \textbf{Signatures.} A signature is a special kind of length-prefixed string. The contents of a signature are obtained by first taking the SHA3-256 hash of the data to which the signature pertains and then applying the FIPS 186-4 (EC)DSA algorithm to that hash \cite{fips-202-sha3, fips-186-4-dss}.
 		
@@ -339,13 +340,13 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 	Additionally, sellers likely have an interest in obtaining payment sooner rather than later. Redeeming promissory notes immediately helps with that.
 
-	If the bank notices that a buyer is trying to double-spend a check, then the online transaction will be canceled and bank will take further action. The specific measures a bank may take are briefly discussed in \autoref{sec:double-spending-checks}.
+	If the bank notices that a buyer is trying to double-spend a check, then the online transaction will be canceled and the bank will take further action. The specific measures a bank may take are briefly discussed in \autoref{sec:double-spending-checks}.
 	
 	\paragraph{Seller is offline}
 	
 	For obvious reasons, offline sellers cannot redeem promissory notes immediately. Instead, they assume that the buyer is not a bad actor and store the promissory note for later redemption.
 
-	Malicious buyers can abuse the gullibility of offline sellers by trying to spend the same check twice. However, as explained in more detail in \autoref{sec:double-spending-checks}, the buyer cannot hope to get away with it.
+	Malicious buyers can abuse the gullibility of offline sellers by trying to spend the same check twice. However, as will be explained in more detail in \autoref{sec:double-spending-checks}, the buyer cannot hope to get away with it.
 
 	\section{Attacks, vulnerabilities and mitigations}
 
@@ -369,7 +370,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 	\subsubsection{Impersonation of the seller}
 	
-	An attacker could try to impersonate the seller with a man in the middle attack. However the buyer can verify the recipient of the transaction, by comparing the public key of the promissory note to the authentication certificate, and verifying that the identification payload is correct. 
+	An attacker could try to impersonate the seller with a man-in-the-middle attack. However the buyer can verify the recipient of the transaction by comparing the public key of the promissory note to the authentication certificate and verifying that the identification payload is correct. 
 	
 	\subsubsection{Theft of promissory notes}
 
@@ -430,7 +431,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 	An attacker might steal an account holder device---or the data it contains. This attack is not addressed directly by the payment system.
 
-	In practice, implementations should encrypt sensitive information on account holder devices. It would be unwise indeed to store unspent checks and account holder device's private key as plain text. A PIN, password or other authentication mechanism can be used to unlock access to the encrypted data on account holder devices.
+	In practice, implementations should encrypt sensitive information on account holder devices. It would be unwise indeed to store unspent checks and the account holder device's private key as plain text. A PIN, password or other authentication mechanism can be used to unlock access to the encrypted data on account holder devices.
 
 	An attacker might still coerce an account holder into giving up their PIN or password, but other payment systems such as credit cards and cash are also vulnerable to this particular attack.
 
@@ -442,7 +443,7 @@ Van Thienen, Philippe\\ \texttt{Philippe.VanThienen@UGent.be}
 
 	More sophisticated attacks such as double-spending checks cannot always be \emph{prevented,} but they can be \emph{detected} after the fact. Action can subsequently be taken to deal with bad-faith actors.
 
-	Some attacks are not mitigated because they \emph{cannot} in fact be mitigated. This final category includes device + PIN/password theft, an attack that works for essentially all payment systems.
+	Some attacks are not mitigated because they \emph{cannot} in fact be mitigated given the requirements for the payment system. This final category includes device + PIN/password theft, an attack that works for essentially all payment systems.
 
 	\bibliographystyle{acm}
 	\bibliography{spec} 
